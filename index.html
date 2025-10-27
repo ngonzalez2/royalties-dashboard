@@ -1,0 +1,1171 @@
+# Creating updated dashboard HTML v14 with Top Works limited to top 10
+html_v14 = r"""
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Royalties Dashboard — Multi‑View (v14: Top 10 works)</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <style>
+        :root {
+            --bg: linear-gradient(180deg, #081018, #13171c);
+            --card: rgba(255, 255, 255, 0.02);
+            --muted: rgba(200, 210, 220, 0.78);
+            --accent: #63b3ff;
+            font-family: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            background: var(--bg);
+            color: #e9f6ff;
+        }
+
+        .app {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .top {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.008));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(6px)
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.15rem
+        }
+
+        .controls {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap
+        }
+
+        .file-btn,
+        .nav-btn {
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: linear-gradient(180deg, #7fc8ff, #3b9be6);
+            color: #04243a;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(6, 18, 30, 0.6);
+        }
+
+        .muted {
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer
+        }
+
+        .card {
+            padding: 16px;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.008));
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(6px)
+        }
+
+        .small {
+            font-size: 0.86rem;
+            color: var(--muted)
+        }
+
+        .views {
+            display: none;
+            margin-top: 12px
+        }
+
+        .views.active {
+            display: block
+        }
+
+        .full {
+            height: 620px;
+            border-radius: 10px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent);
+            overflow: hidden;
+            padding: 8px
+        }
+
+        #bottomOverview {
+            margin-top: 6px;
+            padding: 12px;
+            border-radius: 10px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent);
+            border: 1px solid rgba(255, 255, 255, 0.02)
+        }
+
+        #bottomOverview.hidden {
+            display: none
+        }
+
+        .rev-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap
+        }
+
+        input.small-input {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            padding: 6px;
+            border-radius: 6px;
+            color: #e9f6ff
+        }
+
+        label.inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        @media (max-width:900px) {
+            .full {
+                height: 420px
+            }
+
+            .controls {
+                justify-content: flex-end
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="top">
+            <div class="logo"><svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="2" width="20" height="20" rx="6" fill="#63b3ff"></rect>
+                    <path d="M7 14.5L10.5 10L13 13.5L17 8" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg></div>
+            <div>
+                <h1>Royalties Dashboard</h1>
+                <div class="small">v14 — Top works list limited to top 10 for clarity.</div>
+            </div>
+
+            <div class="controls">
+                <label class="file-btn" id="csvLabel">
+                    <input id="csvInput" type="file" accept=".csv,text/csv" multiple style="display:none" />
+                    Upload CSVs
+                </label>
+                <button id="landingBtn" class="nav-btn">Landing</button>
+                <button id="tsBtn" class="nav-btn">Time series</button>
+                <button id="cumBtn" class="nav-btn">Cumulative</button>
+                <button id="topBtn" class="nav-btn">Top works</button>
+                <button id="revBtn" class="nav-btn">Revenue classes</button>
+            </div>
+        </div>
+
+        <div id="landingView" class="card views active">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <h3 style="margin:0">Overview</h3>
+                    <div class="small">Top works view now shows the top 10 works by income.</div>
+                </div>
+                <div><button id="openTS" class="nav-btn">Open Time series →</button></div>
+            </div>
+        </div>
+
+        <div id="tsView" class="card views">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <div>
+                    <h3 style="margin:0">Net income over time — by provider</h3>
+                    <div class="small">Choose between separate lines or stacked area (stacked lines).</div>
+                </div>
+                <div class="chart-controls">
+                    <label class="inline small">Chart:
+                        <select id="tsChartType" class="small-input">
+                            <option value="lines">Separate lines</option>
+                            <option value="stacked">Stacked area</option>
+                        </select>
+                    </label>
+                    <label class="inline small"><input id="tsHideOther" type="checkbox" /> Hide "Other"</label>
+                    <button id="downloadTS" class="muted">Download PNG</button>
+                    <button class="back-btn nav-btn" data-target="landingView">Back</button>
+                </div>
+            </div>
+            <div id="timeSeriesFull" class="full"></div>
+        </div>
+
+        <div id="cumView" class="card views">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <div>
+                    <h3 style="margin:0">Cumulative income — by provider</h3>
+                    <div class="small">Cumulative sum per provider. Can be shown as separate cumulative lines or stacked cumulative area.</div>
+                </div>
+                <div class="chart-controls">
+                    <label class="inline small">Chart:
+                        <select id="cumChartType" class="small-input">
+                            <option value="lines">Separate lines</option>
+                            <option value="stacked">Stacked area</option>
+                        </select>
+                    </label>
+                    <label class="inline small"><input id="cumHideOther" type="checkbox" /> Hide "Other"</label>
+                    <button id="downloadCum" class="muted">Download PNG</button>
+                    <button class="back-btn nav-btn" data-target="landingView">Back</button>
+                </div>
+            </div>
+            <div id="cumulativeFull" class="full"></div>
+        </div>
+
+        <div id="topView" class="card views">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <h3 style="margin:0">Top works by income (Top 10)</h3>
+                    <div class="small">Click bar to focus a work.</div>
+                </div>
+                <div>
+                    <button id="downloadTop" class="muted">Download PNG</button>
+                    <button class="back-btn nav-btn" data-target="landingView">Back</button>
+                </div>
+            </div>
+            <div id="topWorksFull" class="full"></div>
+        </div>
+
+        <div id="revView" class="card views">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <h3 style="margin:0">Revenue class breakdown (stacked)</h3>
+                    <div class="small">Stacked bars across quarters — grouping sourced only from <strong>DESCRIP. CONCEP</strong>.</div>
+                </div>
+                <div class="rev-controls">
+                    <select id="revQuarterSelect" class="muted" style="min-width:120px"></select>
+                    <label class="small" style="color:var(--muted)">Top N</label>
+                    <input id="revTopN" class="small-input" type="number" min="1" max="200" value="20" style="width:72px" />
+                    <label class="small" style="color:var(--muted)">Group <span style="color:#9fd0ff">‹</span>%</label>
+                    <input id="revThreshold" class="small-input" type="number" min="0" max="100" value="1" style="width:72px" />
+                    <button id="applyRevControls" class="muted">Apply</button>
+                    <button id="downloadRev" class="muted">Download PNG</button>
+                    <button class="back-btn nav-btn" data-target="landingView">Back</button>
+                </div>
+            </div>
+            <div id="revFull" class="full"></div>
+        </div>
+
+        <div id="bottomOverview" class="card">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+                <div id="kpiTiles"></div>
+                <div style="min-width:360px;max-width:640px">
+                    <h3 style="margin:0 0 8px 0">Diagnostics & Mappings</h3>
+                    <div id="fileList" class="small">No files loaded</div>
+                    <div style="margin-top:8px" class="small">You can edit mapping for any file if detection picks the wrong columns.</div>
+                    <div style="margin-top:8px">
+                        <label class="small" style="color:var(--muted)">EUR → USD (manual): </label>
+                        <input id="manualRate" class="small-input" placeholder="leave blank to use live rate" />
+                        <button id="applyRate" class="muted">Apply</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /* v14: Limit Top Works view to top 10 items for clarity.
+   Only change: renderTopWorksFull now uses topN = 10.
+*/ // Set default chart types to stacked area
+  document.addEventListener('DOMContentLoaded', () => {
+    const cumSelect = document.getElementById('cumChartType');
+    if (cumSelect) { cumSelect.value = 'stacked'; }
+    const tsSelect = document.getElementById('tsChartType') || document.getElementById('chartType');
+    if (tsSelect) { tsSelect.value = 'stacked'; }
+  });
+
+
+        const csvInput = document.getElementById('csvInput');
+        csvInput.addEventListener('change', handleCsvFiles);
+        document.getElementById('csvLabel').addEventListener('click', () => csvInput.click());
+
+        let rawDataRows = [];
+        let normalized = [];
+        let fileDiagnostics = [];
+        let liveRate = null;
+        let manualRate = null;
+
+        const SGAE_HEADERS = {
+            WORK_TITLE: 'TIT. OBRA MUSICAL',
+            PERIOD: 'PERIODO ORIGEN',
+            DEDUCTION: 'DTO. ADMINISTRACION',
+            GROSS: 'IMPORTE'
+        };
+
+        const views = ['landingView', 'tsView', 'cumView', 'topView', 'revView'];
+        document.getElementById('landingBtn').addEventListener('click', () => showView('landingView'));
+        document.getElementById('tsBtn').addEventListener('click', () => showView('tsView'));
+        document.getElementById('cumBtn').addEventListener('click', () => showView('cumView'));
+        document.getElementById('topBtn').addEventListener('click', () => showView('topView'));
+        document.getElementById('revBtn').addEventListener('click', () => showView('revView'));
+        document.getElementById('openTS').addEventListener('click', () => showView('tsView'));
+        document.querySelectorAll('.back-btn').forEach(b => b.addEventListener('click', (e) => {
+            const t = e.currentTarget.dataset.target || 'landingView';
+            showView(t);
+        }));
+
+        // re-render on control change for immediate feedback
+        document.getElementById('tsChartType').addEventListener('change', () => {
+            if (document.getElementById('tsView').classList.contains('active')) renderTimeSeriesByProvider();
+        });
+        document.getElementById('tsHideOther').addEventListener('change', () => {
+            if (document.getElementById('tsView').classList.contains('active')) renderTimeSeriesByProvider();
+        });
+        document.getElementById('cumChartType').addEventListener('change', () => {
+            if (document.getElementById('cumView').classList.contains('active')) renderCumulativeByProvider();
+        });
+        document.getElementById('cumHideOther').addEventListener('change', () => {
+            if (document.getElementById('cumView').classList.contains('active')) renderCumulativeByProvider();
+        });
+
+        document.getElementById('applyRate').addEventListener('click', () => {
+            const v = document.getElementById('manualRate').value.trim();
+            if (v === '') {
+                manualRate = null;
+                alert('Manual override cleared — will use live rate if available.');
+                renderLandingKpis();
+                return;
+            }
+            const n = Number(v);
+            if (isNaN(n) || n <= 0) return alert('Please enter a valid positive number for the rate (e.g., 1.17).');
+            manualRate = n;
+            alert('Manual EUR→USD override set to ' + manualRate);
+            renderLandingKpis();
+        });
+
+        // fetch live rate (best-effort)
+        async function fetchLiveRate() {
+            try {
+                const res = await fetch('https://api.exchangerate.host/latest?base=EUR&symbols=USD');
+                const j = await res.json();
+                if (j && j.rates && j.rates.USD) liveRate = Number(j.rates.USD);
+            } catch (e) {
+                console.warn('rate fetch failed', e);
+            }
+        }
+        fetchLiveRate();
+
+        function showView(id) {
+            views.forEach(v => document.getElementById(v).classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            const overview = document.getElementById('bottomOverview');
+            if (id === 'landingView') {
+                overview.classList.remove('hidden');
+            } else {
+                overview.classList.add('hidden');
+            }
+            if (normalized && normalized.length) {
+                if (id === 'tsView') renderTimeSeriesByProvider();
+                if (id === 'cumView') renderCumulativeByProvider();
+                if (id === 'topView') renderTopWorksFull();
+                if (id === 'revView') {
+                    populateRevQuarter();
+                    renderRevenueStack();
+                }
+            }
+        }
+
+        // CSV parsing helpers
+        function parseCsvFile(file) {
+            return new Promise((resolve, reject) => {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    dynamicTyping: false,
+                    transformHeader: h => h.trim(),
+                    complete: results => {
+                        if (results && results.data) resolve(results.data);
+                        else reject(new Error('No data'));
+                    },
+                    error: err => reject(err)
+                });
+            });
+        }
+
+        function parseAmountSmart(v) {
+            if (v === null || v === undefined) return NaN;
+            if (typeof v === 'number') return v;
+            let s = String(v).trim();
+            if (s === '') return NaN;
+            s = s.replace(/[^\d\.\,\-\u2212]/g, '');
+            if (s === '') return NaN;
+            const lastDot = s.lastIndexOf('.');
+            const lastComma = s.lastIndexOf(',');
+            if (lastDot !== -1 && lastComma !== -1) {
+                if (lastComma > lastDot) {
+                    s = s.replace(/\./g, '').replace(/,/g, '.');
+                } else {
+                    s = s.replace(/,/g, '');
+                }
+                const n = Number(s);
+                return Number.isFinite(n) ? n : NaN;
+            }
+            if (lastComma !== -1 && lastDot === -1) {
+                const after = s.length - lastComma - 1;
+                if (after === 2 || after === 1) {
+                    s = s.replace(/,/g, '.');
+                    const n = Number(s);
+                    return Number.isFinite(n) ? n : NaN;
+                }
+                s = s.replace(/,/g, '');
+                const n = Number(s);
+                return Number.isFinite(n) ? n : NaN;
+            }
+            if (lastDot !== -1 && lastComma === -1) {
+                s = s.replace(/,/g, '');
+                const n = Number(s);
+                return Number.isFinite(n) ? n : NaN;
+            }
+            const n = Number(s.replace(/,/g, ''));
+            return Number.isFinite(n) ? n : NaN;
+        }
+
+        function detectProvider(headers) {
+            const nh = headers.map(h => h.trim().toLowerCase());
+            if (nh.includes(SGAE_HEADERS.GROSS.toLowerCase()) && nh.includes(SGAE_HEADERS.PERIOD.toLowerCase())) return 'SGAE';
+            if (nh.some(h => h.includes('dollar') || h.includes('usd'))) return 'ASCAP';
+            return 'Unknown';
+        }
+
+        async function handleCsvFiles(e) {
+            const files = Array.from(e.target.files || []);
+            if (files.length === 0) return;
+            rawDataRows = [];
+            fileDiagnostics = [];
+            for (const f of files) {
+                try {
+                    const rows = await parseCsvFile(f);
+                    rows.forEach(r => r.__source_file = f.name);
+                    const headers = Object.keys(rows[0] || {});
+                    const provider = detectProvider(headers);
+                    let amountCol = null,
+                        dedCol = null,
+                        titleCol = null,
+                        periodCol = null;
+                    if (provider === 'SGAE') {
+                        if (headers.includes(SGAE_HEADERS.GROSS)) amountCol = SGAE_HEADERS.GROSS;
+                        if (headers.includes(SGAE_HEADERS.DEDUCTION)) dedCol = SGAE_HEADERS.DEDUCTION;
+                        if (headers.includes(SGAE_HEADERS.WORK_TITLE)) titleCol = SGAE_HEADERS.WORK_TITLE;
+                        if (headers.includes(SGAE_HEADERS.PERIOD)) periodCol = SGAE_HEADERS.PERIOD;
+                    } else {
+                        amountCol = headers.find(h => /amount|dollar|importe|monto|total/i.test(h)) || headers[0];
+                        titleCol = headers.find(h => /title|obra|work|tit/i.test(h));
+                        periodCol = headers.find(h => /period|peri|date|fecha/i.test(h));
+                        dedCol = headers.find(h => /dto|administr|admin|deduc/i.test(h));
+                    }
+                    rows.forEach(r => {
+                        const gross = amountCol ? parseAmountSmart(r[amountCol]) : NaN;
+                        const ded = dedCol ? parseAmountSmart(r[dedCol]) : 0;
+                        const net = Number.isFinite(gross) ? (Number.isFinite(ded) ? gross - ded : gross) : NaN;
+                        r.__parsed_amount_original = Number.isFinite(net) ? net : NaN;
+                        r.__detected_provider = provider || (r.__parsed_amount_original && r.__parsed_amount_original !== 0 && (String(r[amountCol] || '').includes('€') || String(r[amountCol] || '').includes(',')) ? 'SGAE' : 'ASCAP');
+                        r.__currency = (r.__detected_provider === 'SGAE') ? 'EUR' : 'USD';
+                        r.__mapping = {
+                            amountCol,
+                            dedCol,
+                            titleCol,
+                            periodCol,
+                            provider: r.__detected_provider
+                        };
+                        if (titleCol) r.__work_title_candidate = r[titleCol];
+                        if (periodCol) r.__period_raw = r[periodCol];
+                    });
+                    rawDataRows.push(...rows);
+                    const total = rows.reduce((s, rr) => s + (Number.isFinite(rr.__parsed_amount_original) ? rr.__parsed_amount_original : 0), 0);
+                    fileDiagnostics.push({
+                        file: f.name,
+                        provider,
+                        mapping: {
+                            amountCol,
+                            dedCol,
+                            titleCol,
+                            periodCol
+                        },
+                        rows: rows.length,
+                        fileTotal: total
+                    });
+                } catch (err) {
+                    console.error(err);
+                    alert('Error parsing ' + f.name + ': ' + (err.message || err));
+                }
+            }
+            normalized = normalizeDataFromCsv(rawDataRows);
+            await convertCurrenciesToUSD();
+            renderLandingKpis();
+            showView('landingView');
+        }
+
+        // periodo parser and normalization
+        function parsePeriodoOrigen(v) {
+            if (v === null || v === undefined) return null;
+            const s = String(v).trim();
+            if (!/^\d{6}$/.test(s)) return null;
+            const year = Number(s.slice(0, 4));
+            const q = Number(s.slice(4, 6));
+            if (!(q >= 1 && q <= 4)) return null;
+            return new Date(year, (q - 1) * 3, 1);
+        }
+
+        function normalizeDataFromCsv(rows) {
+            return rows.map((r, idx) => {
+                const out = {
+                    _rawIndex: idx
+                };
+                out.work_title = r.__work_title_candidate || r['TIT. OBRA MUSICAL'] || r['TITLE'] || 'Unknown';
+                out.raw_currency = r.__currency || 'USD';
+                out.source_amount = Number.isFinite(r.__parsed_amount_original) ? r.__parsed_amount_original : 0;
+                out.provider = (r.__mapping && r.__mapping.provider) ? r.__mapping.provider : (r.__detected_provider || (out.raw_currency === 'EUR' ? 'SGAE' : 'ASCAP'));
+                let dt = null;
+                if (r.__period_raw) dt = parsePeriodoOrigen(r.__period_raw);
+                if (!dt && r.__period_raw) dt = tryParseDate(r.__period_raw);
+                out.distribution_date = dt;
+                if (dt) {
+                    const q = Math.floor(dt.getMonth() / 3) + 1;
+                    out.quarter = `${dt.getFullYear()}-Q${q}`;
+                    out.quarterDate = new Date(dt.getFullYear(), (q - 1) * 3, 1);
+                } else {
+                    out.quarter = 'Unknown';
+                    out.quarterDate = null;
+                }
+                out.revenue_class_description = (r['DESCRIP. CONCEP'] || '').toString();
+                out.country_name = r['PAIS'] || r['PROCEDENCIA'] || r['country'] || '';
+                out.__source_file = r.__source_file;
+                return out;
+            });
+        }
+
+        function tryParseDate(v) {
+            if (!v) return null;
+            const s = String(v).trim();
+            if (s === '') return null;
+            const d = new Date(s);
+            if (!isNaN(d)) return d;
+            const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+            if (m) {
+                const dd = Number(m[1]),
+                    mm = Number(m[2]) - 1,
+                    yy = Number(m[3]);
+                const d2 = new Date(yy, mm, dd);
+                if (!isNaN(d2)) return d2;
+            }
+            return null;
+        }
+
+        // currency conversion
+        async function convertCurrenciesToUSD() {
+            if (liveRate === null) await fetchLiveRate();
+            const rateToUse = manualRate || liveRate || 1.0;
+            normalized.forEach(r => {
+                if (r.raw_currency === 'EUR') {
+                    r.amount = (r.source_amount || 0) * rateToUse;
+                    r._display_currency = 'USD';
+                } else {
+                    r.amount = (r.source_amount || 0);
+                    r._display_currency = 'USD';
+                }
+            });
+            fileDiagnostics = fileDiagnostics.map(fd => {
+                const rows = rawDataRows.filter(rr => rr.__source_file === fd.file);
+                const sourceTotal = rows.reduce((s, rr) => s + (Number.isFinite(rr.__parsed_amount_original) ? rr.__parsed_amount_original : 0), 0);
+                const converted = rows.reduce((s, rr) => {
+                    const src = Number.isFinite(rr.__parsed_amount_original) ? rr.__parsed_amount_original : 0;
+                    const currency = rr.__currency || 'USD';
+                    const conv = (currency === 'EUR') ? src * (manualRate || liveRate || 1) : src;
+                    return s + conv;
+                }, 0);
+                return {
+                    ...fd,
+                    fileTotalSource: sourceTotal,
+                    fileTotalConverted: converted
+                };
+            });
+        }
+
+        // provider aggregation helpers (same as v13)
+        function aggregateByQuarterByProvider(data) {
+            const quartersSet = new Set();
+            const provMap = new Map();
+            const totals = new Map();
+            for (const r of data) {
+                const q = r.quarter || 'Unknown';
+                quartersSet.add(q);
+                const prov = r.provider || 'Unknown';
+                if (!provMap.has(prov)) provMap.set(prov, new Map());
+                const qm = provMap.get(prov);
+                qm.set(q, (qm.get(q) || 0) + (r.amount || 0));
+                totals.set(prov, (totals.get(prov) || 0) + (r.amount || 0));
+            }
+            const quarterDates = {};
+            for (const r of data) {
+                if (r.quarter && r.quarterDate) quarterDates[r.quarter] = r.quarterDate;
+            }
+            const quarters = Array.from(quartersSet).sort((a, b) => (quarterDates[a] || 0) - (quarterDates[b] || 0));
+            const providers = Array.from(provMap.keys()).sort((a, b) => (totals.get(b) || 0) - (totals.get(a) || 0));
+            const series = providers.map(prov => {
+                const qm = provMap.get(prov);
+                const values = quarters.map(q => (qm && qm.get(q)) ? qm.get(q) : 0);
+                return {
+                    provider: prov,
+                    values,
+                    total: totals.get(prov) || 0
+                };
+            });
+            return {
+                quarters,
+                series,
+                providers
+            };
+        }
+
+        // render time series by provider with mode
+        function renderTimeSeriesByProvider() {
+            const el = document.getElementById('timeSeriesFull');
+            const agg = aggregateByQuarterByProvider(normalized);
+            if (!agg.quarters || agg.quarters.length === 0) {
+                el.innerHTML = '<div class="small">No data</div>';
+                return;
+            }
+            const chartType = document.getElementById('tsChartType').value;
+            const hideOther = document.getElementById('tsHideOther').checked;
+            const quartersDates = agg.quarters.map(q => {
+                const any = normalized.find(r => r.quarter === q && r.quarterDate);
+                return any ? any.quarterDate : new Date(q.split('-')[0], 0, 1);
+            });
+            const traces = [];
+            for (const s of agg.series) {
+                if (hideOther && s.provider === 'Other') continue;
+                if (chartType === 'stacked') {
+                    traces.push({
+                        x: quartersDates,
+                        y: s.values,
+                        name: s.provider,
+                        type: 'scatter',
+                        mode: 'none',
+                        stackgroup: 'stack',
+                        hoverinfo: 'x+y+name'
+                    });
+                } else {
+                    traces.push({
+                        x: quartersDates,
+                        y: s.values,
+                        name: s.provider,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        hoverinfo: 'x+y+name'
+                    });
+                }
+            }
+            const layout = {
+                margin: {
+                    t: 10,
+                    l: 60,
+                    r: 10,
+                    b: 40
+                },
+                title: {
+                    text: 'Net income over time by provider (USD)',
+                    font: {
+                        size: 14
+                    }
+                },
+                xaxis: {
+                    tickformat: '%Y-Q%q'
+                },
+                yaxis: {
+                    tickformat: '.2f'
+                }
+            };
+            Plotly.newPlot(el, traces, layout, {
+                responsive: true,
+                displayModeBar: true
+            });
+        }
+
+        // render cumulative per provider with mode
+        function renderCumulativeByProvider() {
+            const el = document.getElementById('cumulativeFull');
+            const agg = aggregateByQuarterByProvider(normalized);
+            if (!agg.quarters || agg.quarters.length === 0) {
+                el.innerHTML = '<div class="small">No data</div>';
+                return;
+            }
+            const chartType = document.getElementById('cumChartType').value;
+            const hideOther = document.getElementById('cumHideOther').checked;
+            const quartersDates = agg.quarters.map(q => {
+                const any = normalized.find(r => r.quarter === q && r.quarterDate);
+                return any ? any.quarterDate : new Date(q.split('-')[0], 0, 1);
+            });
+            const cumSeries = agg.series.map(s => {
+                let cum = 0;
+                const vals = s.values.map(v => {
+                    cum += v;
+                    return cum;
+                });
+                return {
+                    provider: s.provider,
+                    values: vals,
+                    total: s.total
+                };
+            });
+            const traces = [];
+            for (const s of cumSeries) {
+                if (hideOther && s.provider === 'Other') continue;
+                if (chartType === 'stacked') {
+                    traces.push({
+                        x: quartersDates,
+                        y: s.values,
+                        name: s.provider,
+                        type: 'scatter',
+                        mode: 'none',
+                        stackgroup: 'stack',
+                        hoverinfo: 'x+y+name'
+                    });
+                } else {
+                    traces.push({
+                        x: quartersDates,
+                        y: s.values,
+                        name: s.provider,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        hoverinfo: 'x+y+name'
+                    });
+                }
+            }
+            const layout = {
+                margin: {
+                    t: 10,
+                    l: 60,
+                    r: 10,
+                    b: 40
+                },
+                title: {
+                    text: 'Cumulative income by provider (USD)',
+                    font: {
+                        size: 14
+                    }
+                },
+                xaxis: {
+                    tickformat: '%Y-Q%q'
+                },
+                yaxis: {
+                    tickformat: '.2f'
+                }
+            };
+            Plotly.newPlot(el, traces, layout, {
+                responsive: true,
+                displayModeBar: true
+            });
+        }
+
+        // remaining renderers and revenue stack
+        function aggregateByQuarter(data) {
+            const map = new Map();
+            for (const r of data)
+                if (r.quarterDate) {
+                    const k = r.quarter;
+                    if (!map.has(k)) map.set(k, {
+                        quarterDate: r.quarterDate,
+                        amount: 0
+                    });
+                    map.get(k).amount += r.amount || 0;
+                } const items = Array.from(map.entries()).map(([k, v]) => ({
+                quarter: k,
+                quarterDate: v.quarterDate,
+                amount: v.amount
+            })).sort((a, b) => a.quarterDate - b.quarterDate);
+            return items;
+        }
+
+        function aggregateCumulative(ts) {
+            let cum = 0;
+            return ts.map(i => {
+                cum += i.amount;
+                return {
+                    quarter: i.quarter,
+                    quarterDate: i.quarterDate,
+                    cumulative: cum
+                };
+            });
+        }
+
+        // IMPORTANT: limit top works to top 10
+        function aggregateTopWorks(data, topN = 10) {
+            const m = new Map();
+            for (const r of data) {
+                const w = r.work_title || 'Unknown';
+                m.set(w, (m.get(w) || 0) + (r.amount || 0));
+            }
+            const arr = Array.from(m.entries()).map(([k, v]) => ({
+                work_title: k,
+                amount: v
+            }));
+            arr.sort((a, b) => b.amount - a.amount);
+            return arr.slice(0, topN);
+        }
+
+        function renderTopWorksFull() {
+            const el = document.getElementById('topWorksFull');
+            const top = aggregateTopWorks(normalized, 10);
+            if (!top.length) {
+                el.innerHTML = '<div class="small">No data</div>';
+                return;
+            }
+            const x = top.map(t => t.amount).reverse(),
+                y = top.map(t => t.work_title).reverse();
+            const trace = {
+                x,
+                y,
+                type: 'bar',
+                orientation: 'h',
+                marker: {
+                    color: 'rgba(99,179,255,0.95)'
+                }
+            };
+            const layout = {
+                margin: {
+                    t: 10,
+                    l: 260,
+                    r: 10,
+                    b: 40
+                },
+                title: {
+                    text: 'Top 10 works (USD)',
+                    font: {
+                        size: 14
+                    }
+                }
+            };
+            Plotly.newPlot(el, [trace], layout, {
+                responsive: true,
+                displayModeBar: true
+            });
+        }
+
+        // revenue stack logic (DESCRIP. CONCEP)
+        function normalizeClassLabel(raw) {
+            if (raw === null || raw === undefined) return 'Unspecified';
+            let s = String(raw).trim();
+            if (s === '') return 'Unspecified';
+            s = s.replace(/\s+/g, ' ').replace(/\.$/, '').trim();
+            return s;
+        }
+
+        function buildRevenueTable(data) {
+            const quarterMap = new Map();
+            for (const r of data) {
+                const q = r.quarter || 'Unknown';
+                const cls = normalizeClassLabel(r.revenue_class_description || 'Unspecified');
+                if (!quarterMap.has(q)) quarterMap.set(q, new Map());
+                const cm = quarterMap.get(q);
+                cm.set(cls, (cm.get(cls) || 0) + (r.amount || 0));
+            }
+            const totalByClass = new Map();
+            for (const [q, cm] of quarterMap.entries()) {
+                for (const [cls, val] of cm.entries()) totalByClass.set(cls, (totalByClass.get(cls) || 0) + val);
+            }
+            const quarterDates = {};
+            for (const r of data) {
+                if (r.quarter && r.quarterDate) quarterDates[r.quarter] = r.quarterDate;
+            }
+            const quarters = Array.from(quarterMap.keys()).sort((a, b) => (quarterDates[a] || 0) - (quarterDates[b] || 0));
+            return {
+                quarterMap,
+                quarters,
+                totalByClass
+            };
+        }
+
+        function chooseStackClasses(table, selectedQuarter, topN, thresholdPercent) {
+            const totalByClassArr = Array.from(table.totalByClass.entries()).sort((a, b) => b[1] - a[1]);
+            const topNclasses = totalByClassArr.slice(0, topN).map(x => x[0]);
+            const perQuarter = table.quarterMap.get(selectedQuarter) || new Map();
+            const quarterTotal = Array.from(perQuarter.values()).reduce((s, v) => s + v, 0);
+            const thresholdAbs = (thresholdPercent / 100) * quarterTotal;
+            const includeFromQuarter = [];
+            for (const [cls, val] of perQuarter.entries()) {
+                if (val >= thresholdAbs && !topNclasses.includes(cls)) includeFromQuarter.push(cls);
+            }
+            const selected = Array.from(new Set([...topNclasses, ...includeFromQuarter]));
+            return selected;
+        }
+
+        function renderRevenueStack() {
+            const el = document.getElementById('revFull');
+            const controls = getRevControls();
+            const table = buildRevenueTable(normalized);
+            if (!table.quarters || table.quarters.length === 0) {
+                el.innerHTML = '<div class="small">No data</div>';
+                return;
+            }
+            const sel = document.getElementById('revQuarterSelect');
+            if (!sel.options.length) {
+                table.quarters.forEach(q => {
+                    const opt = document.createElement('option');
+                    opt.value = q;
+                    opt.text = q;
+                    sel.appendChild(opt);
+                });
+                sel.value = table.quarters[table.quarters.length - 1];
+            }
+            const selectedQuarter = sel.value || table.quarters[table.quarters.length - 1];
+            const selectedClasses = chooseStackClasses(table, selectedQuarter, controls.topN, controls.threshold);
+            const quarters = table.quarters;
+            const series = [];
+            for (const cls of selectedClasses) {
+                const vals = quarters.map(q => (table.quarterMap.get(q) && table.quarterMap.get(q).get(cls)) ? table.quarterMap.get(q).get(cls) : 0);
+                series.push({
+                    name: cls,
+                    values: vals
+                });
+            }
+            const otherVals = quarters.map(q => {
+                const cm = table.quarterMap.get(q) || new Map();
+                const total = Array.from(cm.values()).reduce((s, v) => s + v, 0);
+                let selectedSum = 0;
+                for (const cls of selectedClasses) selectedSum += (cm.get(cls) || 0);
+                return Math.max(0, total - selectedSum);
+            });
+            series.push({
+                name: 'Other',
+                values: otherVals
+            });
+            const traces = series.map(s => ({
+                x: quarters,
+                y: s.values,
+                name: s.name,
+                type: 'bar'
+            }));
+            const layout = {
+                barmode: 'stack',
+                margin: {
+                    t: 10,
+                    l: 80,
+                    r: 10,
+                    b: 120
+                },
+                title: {
+                    text: 'Revenue class breakdown (stacked) by quarter (USD)',
+                    font: {
+                        size: 14
+                    }
+                },
+                legend: {
+                    orientation: 'v',
+                    x: 1.02,
+                    y: 1
+                }
+            };
+            Plotly.newPlot(el, traces, layout, {
+                responsive: true,
+                displayModeBar: true
+            });
+        }
+
+        function getRevControls() {
+            const topN = Math.max(1, parseInt(document.getElementById('revTopN').value || '20', 10));
+            const threshold = Math.max(0, parseFloat(document.getElementById('revThreshold').value || '1'));
+            return {
+                topN,
+                threshold
+            };
+        }
+        document.getElementById('applyRevControls').addEventListener('click', () => renderRevenueStack());
+
+        // landing KPIs & diagnostics
+        function renderLandingKpis() {
+            const total = normalized.reduce((s, r) => s + (r.amount || 0), 0);
+            const last12 = (() => {
+                const validDates = normalized.filter(r => r.distribution_date).map(r => r.distribution_date);
+                if (!validDates.length) return 0;
+                const maxDate = new Date(Math.max(...validDates.map(d => d.getTime())));
+                const from = new Date(maxDate.getFullYear(), maxDate.getMonth() - 11, 1);
+                return normalized.filter(r => r.distribution_date && r.distribution_date >= from).reduce((s, r) => s + (r.amount || 0), 0);
+            })();
+            const top = aggregateTopWorks(normalized, 1);
+            const kpiHtml = `<div style="display:flex;gap:12px;flex-wrap:wrap"><div style="padding:12px;border-radius:10px;background:var(--card);min-width:160px"><div class="small">Total (USD)</div><div style="font-weight:700">${formatCurrency(total)}</div></div><div style="padding:12px;border-radius:10px;background:var(--card);min-width:160px"><div class="small">Last 12 months (USD)</div><div style="font-weight:700">${formatCurrency(last12)}</div></div><div style="padding:12px;border-radius:10px;background:var(--card);min-width:260px"><div class="small">Top work (USD)</div><div style="font-weight:700">${top.length? top[0].work_title + ' (' + formatCurrency(top[0].amount) + ')' : '—'}</div></div></div>`;
+            document.getElementById('kpiTiles').innerHTML = kpiHtml;
+            showDiagnostics();
+        }
+
+        function showDiagnostics() {
+            const el = document.getElementById('fileList');
+            if (!fileDiagnostics || fileDiagnostics.length === 0) {
+                el.textContent = 'No files loaded';
+                return;
+            }
+            const rateInfo = `Live rate: ${liveRate? liveRate.toFixed(4) : 'n/a'} — Override: ${manualRate ? manualRate : 'none'}`;
+            let html = fileDiagnostics.map((d, i) => {
+                return `<div style="margin-bottom:8px"><strong>${d.file}</strong> — provider: ${d.provider} — rows: ${d.rows} — source total: ${formatNumber(d.fileTotalSource || d.fileTotal)} — converted total (USD): ${formatCurrency(d.fileTotalConverted || 0)}<div class="small" style="margin-top:6px">mapping: ${JSON.stringify(d.mapping).replace(/\"/g,'')}</div><div style="margin-top:6px"><button onclick="editMapping(${i})" class="muted">Edit mapping</button> <button onclick="reparseFile(${i})" class="muted">Re-detect</button></div></div>`;
+            }).join('');
+            el.innerHTML = `<div style="margin-bottom:8px">Loaded ${fileDiagnostics.length} file(s) — ${rawDataRows.length} rows total.</div><div style="max-height:220px;overflow:auto;padding:8px;border-radius:8px;background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02)">${html}</div><div style="margin-top:8px"><strong>Rate info:</strong> ${rateInfo}</div>`;
+        }
+
+        function editMapping(idx) {
+            const diag = fileDiagnostics[idx];
+            if (!diag) return alert('No mapping');
+            const file = diag.file;
+            const newAmount = prompt(`Exact column header to use as GROSS (IMPORTE) for file "${file}" (leave blank to keep current):`, diag.mapping.amountCol || '');
+            if (newAmount === null) return;
+            const newDed = prompt(`Exact column header to use as DEDUCTION (DTO. ADMINISTRACION) for file "${file}" (leave blank to keep current):`, diag.mapping.dedCol || '');
+            if (newDed === null) return;
+            const rows = rawDataRows.filter(r => r.__source_file === file);
+            rows.forEach(r => {
+                const gross = newAmount ? parseAmountSmart(r[newAmount]) : (r.__parsed_amount_original || NaN);
+                const ded = newDed ? parseAmountSmart(r[newDed]) : 0;
+                r.__parsed_amount_original = Number.isFinite(gross) ? (Number.isFinite(ded) ? gross - ded : gross) : NaN;
+            });
+            diag.mapping.amountCol = newAmount || diag.mapping.amountCol;
+            diag.mapping.dedCol = newDed || diag.mapping.dedCol;
+            normalized = normalizeDataFromCsv(rawDataRows);
+            convertCurrenciesToUSD().then(() => {
+                renderLandingKpis();
+                showDiagnostics();
+                alert('Mapping updated and reprocessed.');
+            });
+        }
+
+        function reparseFile(idx) {
+            const diag = fileDiagnostics[idx];
+            if (!diag) return;
+            const file = diag.file;
+            const rows = rawDataRows.filter(r => r.__source_file === file);
+            if (!rows.length) return alert('No rows for file');
+            const headers = Object.keys(rows[0] || {});
+            const amountCol = headers.find(h => /importe|monto|amount|total|dollars|usd/i.test(h)) || headers[0];
+            const dedCol = headers.find(h => /dto|administr|admin|deduc|descuento/i.test(h)) || null;
+            rows.forEach(r => {
+                const gross = amountCol ? parseAmountSmart(r[amountCol]) : NaN;
+                const ded = dedCol ? parseAmountSmart(r[dedCol]) : 0;
+                r.__parsed_amount_original = Number.isFinite(gross) ? (Number.isFinite(ded) ? gross - ded : gross) : NaN;
+                r.__mapping = {
+                    amountCol,
+                    dedCol
+                };
+            });
+            diag.mapping.amountCol = amountCol;
+            diag.mapping.dedCol = dedCol;
+            normalized = normalizeDataFromCsv(rawDataRows);
+            convertCurrenciesToUSD().then(() => {
+                renderLandingKpis();
+                showDiagnostics();
+                alert('Re-detection done.');
+            });
+        }
+
+        function formatCurrency(v) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                maximumFractionDigits: 2
+            }).format(v);
+        }
+
+        function formatNumber(v) {
+            return Number.isFinite(v) ? v.toLocaleString() : '—';
+        }
+
+        function populateRevQuarter() {
+            const sel = document.getElementById('revQuarterSelect');
+            sel.innerHTML = '';
+            const table = buildRevenueTable(normalized);
+            if (!table.quarters) return;
+            table.quarters.forEach(q => {
+                const opt = document.createElement('option');
+                opt.value = q;
+                opt.text = q;
+                sel.appendChild(opt);
+            });
+            if (table.quarters.length) sel.value = table.quarters[table.quarters.length - 1];
+        }
+
+        document.getElementById('downloadTS').addEventListener('click', () => {
+            Plotly.toImage(document.getElementById('timeSeriesFull'), {
+                format: 'png',
+                height: 700,
+                width: 1000
+            }).then(url => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'time_series_by_provider.png';
+                a.click();
+            });
+        });
+        document.getElementById('downloadCum').addEventListener('click', () => {
+            Plotly.toImage(document.getElementById('cumulativeFull'), {
+                format: 'png',
+                height: 700,
+                width: 1000
+            }).then(url => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'cumulative_by_provider.png';
+                a.click();
+            });
+        });
+        document.getElementById('downloadTop').addEventListener('click', () => {
+            Plotly.toImage(document.getElementById('topWorksFull'), {
+                format: 'png',
+                height: 900,
+                width: 1200
+            }).then(url => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'top_10_works.png';
+                a.click();
+            });
+        });
+        document.getElementById('downloadRev').addEventListener('click', () => {
+            Plotly.toImage(document.getElementById('revFull'), {
+                format: 'png',
+                height: 900,
+                width: 1200
+            }).then(url => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'revenue_classes.png';
+                a.click();
+            });
+        });
+
+        // start
+        showView('landingView');
+    </script>
+</body>
+
+</html>
