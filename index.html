@@ -4,7 +4,7 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>Royalties Dashboard — Multi‑View (v14: Top 10 works)</title>
+    <title>Royalties Dashboard — Multi‑View (v15: ASCAP Intl detection)</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
@@ -178,7 +178,7 @@
                 </svg></div>
             <div>
                 <h1>Royalties Dashboard</h1>
-                <div class="small">v14 — Top works list limited to top 10 for clarity.</div>
+                <div class="small">v15 — ASCAP International detection with refined provider split.</div>
             </div>
 
             <div class="controls">
@@ -458,8 +458,40 @@
         function detectProvider(headers) {
             const nh = headers.map(h => h.trim().toLowerCase());
             if (nh.includes(SGAE_HEADERS.GROSS.toLowerCase()) && nh.includes(SGAE_HEADERS.PERIOD.toLowerCase())) return 'SGAE';
-            if (nh.some(h => h.includes('dollar') || h.includes('usd'))) return 'ASCAP';
-            return 'Unknown';
+            if (nh.includes('file type')) return 'ASCAP (Int)';
+            if (nh.some(h => h.includes('dollar') || h.includes('usd'))) return 'ASCAP (Dom)';
+            return 'Other';
+        }
+
+        function resolveProviderLabel(providerGuess, row, amountCol, fileTypeHeader) {
+            const normalizedGuess = (providerGuess || '').toString().trim();
+            if (normalizedGuess === 'SGAE' || normalizedGuess === 'ASCAP (Dom)' || normalizedGuess === 'ASCAP (Int)') return normalizedGuess;
+            if (normalizedGuess === 'ASCAP') {
+                return fileTypeHeader && row.hasOwnProperty(fileTypeHeader) ? 'ASCAP (Int)' : 'ASCAP (Dom)';
+            }
+            if (fileTypeHeader && row.hasOwnProperty(fileTypeHeader)) return 'ASCAP (Int)';
+            const amountSample = amountCol ? String(row[amountCol] || '').toLowerCase() : '';
+            if (normalizedGuess === 'Other') {
+                if (amountSample.includes('€') || amountSample.includes('eur')) return 'SGAE';
+                return 'ASCAP (Dom)';
+            }
+            if (!normalizedGuess || normalizedGuess === 'Unknown') {
+                if (amountSample.includes('€') || amountSample.includes('eur')) return 'SGAE';
+                return fileTypeHeader && row.hasOwnProperty(fileTypeHeader) ? 'ASCAP (Int)' : 'ASCAP (Dom)';
+            }
+            return normalizedGuess;
+        }
+
+        function canonicalizeProvider(provider, rawCurrency) {
+            const normalized = (provider || '').toString().trim();
+            if (normalized === 'SGAE') return 'SGAE';
+            if (normalized === 'ASCAP (Int)') return 'ASCAP (Int)';
+            if (normalized === 'ASCAP (Dom)') return 'ASCAP (Dom)';
+            if (normalized === 'ASCAP') return 'ASCAP (Dom)';
+            if (normalized === 'Unknown') return rawCurrency === 'EUR' ? 'SGAE' : 'ASCAP (Int)';
+            if (normalized === 'Other') return rawCurrency === 'EUR' ? 'SGAE' : 'ASCAP (Dom)';
+            if (rawCurrency === 'EUR') return 'SGAE';
+            return 'ASCAP (Dom)';
         }
 
         async function handleCsvFiles(e) {
@@ -473,6 +505,7 @@
                     rows.forEach(r => r.__source_file = f.name);
                     const headers = Object.keys(rows[0] || {});
                     const provider = detectProvider(headers);
+                    const fileTypeHeader = headers.find(h => h.trim().toLowerCase() === 'file type');
                     let amountCol = null,
                         dedCol = null,
                         titleCol = null,
@@ -493,8 +526,9 @@
                         const ded = dedCol ? parseAmountSmart(r[dedCol]) : 0;
                         const net = Number.isFinite(gross) ? (Number.isFinite(ded) ? gross - ded : gross) : NaN;
                         r.__parsed_amount_original = Number.isFinite(net) ? net : NaN;
-                        r.__detected_provider = provider || (r.__parsed_amount_original && r.__parsed_amount_original !== 0 && (String(r[amountCol] || '').includes('€') || String(r[amountCol] || '').includes(',')) ? 'SGAE' : 'ASCAP');
-                        r.__currency = (r.__detected_provider === 'SGAE') ? 'EUR' : 'USD';
+                        const resolvedProvider = resolveProviderLabel(provider, r, amountCol, fileTypeHeader);
+                        r.__detected_provider = resolvedProvider;
+                        r.__currency = (resolvedProvider === 'SGAE') ? 'EUR' : 'USD';
                         r.__mapping = {
                             amountCol,
                             dedCol,
@@ -549,7 +583,8 @@
                 out.work_title = r.__work_title_candidate || r['TIT. OBRA MUSICAL'] || r['TITLE'] || 'Unknown';
                 out.raw_currency = r.__currency || 'USD';
                 out.source_amount = Number.isFinite(r.__parsed_amount_original) ? r.__parsed_amount_original : 0;
-                out.provider = (r.__mapping && r.__mapping.provider) ? r.__mapping.provider : (r.__detected_provider || (out.raw_currency === 'EUR' ? 'SGAE' : 'ASCAP'));
+                const detectedProvider = (r.__mapping && r.__mapping.provider) ? r.__mapping.provider : (r.__detected_provider || '');
+                out.provider = canonicalizeProvider(detectedProvider, out.raw_currency);
                 let dt = null;
                 if (r.__period_raw) dt = parsePeriodoOrigen(r.__period_raw);
                 if (!dt && r.__period_raw) dt = tryParseDate(r.__period_raw);
