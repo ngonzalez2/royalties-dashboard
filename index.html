@@ -246,6 +246,81 @@
             display: block;
         }
 
+        .landing-grid {
+            margin-top: 18px;
+            display: grid;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .landing-card {
+            grid-column: span 6;
+            background: var(--card-strong);
+            border: 1px solid rgba(160, 195, 255, 0.25);
+            border-radius: 18px;
+            padding: 22px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 20px 48px rgba(6, 12, 30, 0.35);
+        }
+
+        .landing-card.full-span {
+            grid-column: span 12;
+        }
+
+        .landing-card h4 {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .insight-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .insight-pill {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: rgba(146, 192, 255, 0.12);
+            border: 1px solid rgba(146, 192, 255, 0.22);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .insight-pill .muted {
+            font-weight: 500;
+        }
+
+        .insight-metric {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .insight-metric .label {
+            font-size: 0.82rem;
+            color: rgba(209, 220, 243, 0.75);
+        }
+
+        .insight-metric .value {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .insight-note {
+            margin-top: 2px;
+        }
+
         .full {
             height: 620px;
             border-radius: 14px;
@@ -253,6 +328,82 @@
             overflow: hidden;
             padding: 10px;
             border: 1px solid rgba(120, 156, 255, 0.15);
+        }
+
+        .diagnostics-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-top: 10px;
+        }
+
+        .diagnostics-entry {
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            padding: 14px 16px 18px;
+            background: rgba(12, 20, 36, 0.55);
+            box-shadow: 0 12px 30px rgba(4, 8, 20, 0.35);
+        }
+
+        .diagnostics-entry header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .diagnostics-entry header .meta {
+            font-size: 0.85rem;
+            color: rgba(209, 220, 243, 0.8);
+        }
+
+        .diagnostics-entry header strong {
+            font-size: 1rem;
+        }
+
+        .diagnostics-grid {
+            margin-top: 14px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+        }
+
+        .diagnostics-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: rgba(209, 220, 243, 0.72);
+        }
+
+        .diag-select {
+            border-radius: 10px;
+            border: 1px solid rgba(160, 195, 255, 0.28);
+            background: rgba(8, 14, 26, 0.65);
+            color: var(--text);
+            padding: 8px 10px;
+            font-size: 0.9rem;
+        }
+
+        .diagnostics-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .diagnostics-empty {
+            padding: 18px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px dashed rgba(146, 192, 255, 0.35);
+        }
+
+        .diagnostics-note {
+            margin-top: 4px;
+            font-size: 0.78rem;
+            color: rgba(209, 220, 243, 0.68);
         }
 
         #bottomOverview {
@@ -378,10 +529,6 @@
         }
 
         #fileList {
-            padding: 16px;
-            border-radius: 16px;
-            background: rgba(10, 18, 34, 0.6);
-            border: 1px solid rgba(146, 192, 255, 0.2);
             min-height: 54px;
         }
 
@@ -421,6 +568,22 @@
                 flex-direction: column;
             }
         }
+
+        @media (max-width: 1080px) {
+            .landing-card {
+                grid-column: span 12;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .landing-grid {
+                grid-template-columns: repeat(6, minmax(0, 1fr));
+            }
+
+            .landing-card {
+                grid-column: span 6;
+            }
+        }
     </style>
 </head>
 
@@ -458,6 +621,13 @@
                     <div class="small">Top works view now shows the top 10 works by income.</div>
                 </div>
                 <div><button id="openTS" class="nav-btn ghost">Open Time series →</button></div>
+            </div>
+            <div id="landingInsights" class="landing-grid">
+                <div class="landing-card full-span">
+                    <h4>Load your royalty statements</h4>
+                    <div class="small">Upload SGAE, ASCAP, or Warner Chappell CSV files to unlock highlights, trends, and diagnostics.</div>
+                    <div class="insight-note small">Once data is loaded you will see provider mix, latest quarter performance, and data health here.</div>
+                </div>
             </div>
         </div>
 
@@ -542,8 +712,10 @@
                 <div id="kpiTiles"></div>
                 <div class="bottom-diagnostics">
                     <h3>Diagnostics &amp; Mappings</h3>
-                    <div id="fileList" class="small">No files loaded</div>
-                    <div class="small">You can edit mapping for any file if detection picks the wrong columns.</div>
+                    <div id="fileList" class="diagnostics-wrapper small">
+                        <div class="diagnostics-empty">No files loaded yet. Upload statements to review detected mappings.</div>
+                    </div>
+                    <div class="diagnostics-note">Refine gross, deduction, and period mappings per file. Changes recalculate the entire dashboard instantly.</div>
                     <div class="rate-controls">
                         <label class="small">EUR → USD (manual):</label>
                         <input id="manualRate" class="small-input" placeholder="leave blank or e.g., EUR=1.1" />
@@ -1012,7 +1184,10 @@
                     fileDiagnostics.push({
                         file: f.name,
                         provider,
+                        providerOverride: 'auto',
+                        fileTypeHeader,
                         headers,
+                        dedIsAlwaysZero,
                         mapping: {
                             amountCol,
                             dedCol: dedIsAlwaysZero ? null : dedCol,
@@ -1020,10 +1195,13 @@
                             periodCol,
                             territoryCol,
                             periodYearCol: periodYearCol || null,
-                            periodQuarterCol: periodQuarterCol || null
+                            periodQuarterCol: periodQuarterCol || null,
+                            provider
                         },
                         rows: rows.length,
-                        fileTotal: total
+                        fileTotal: total,
+                        fileTotalSource: total,
+                        fileTotalConverted: 0
                     });
                 } catch (err) {
                     console.error(err);
@@ -1037,6 +1215,16 @@
         }
 
         // periodo parser and normalization
+        function quarterLabelToDate(label) {
+            if (!label) return null;
+            const match = String(label).trim().match(/^(\d{4})-Q([1-4])$/);
+            if (!match) return null;
+            const year = Number(match[1]);
+            const quarter = Number(match[2]);
+            if (!Number.isFinite(year) || !Number.isFinite(quarter)) return null;
+            return new Date(year, (quarter - 1) * 3, 1);
+        }
+
         function parsePeriodoOrigen(v) {
             if (v === null || v === undefined) return null;
             const s = String(v).trim();
@@ -1200,22 +1388,7 @@
                     r._display_currency = currency;
                 }
             });
-            fileDiagnostics = fileDiagnostics.map(fd => {
-                const rows = rawDataRows.filter(rr => rr.__source_file === fd.file);
-                const sourceTotal = rows.reduce((s, rr) => s + (Number.isFinite(rr.__parsed_amount_original) ? rr.__parsed_amount_original : 0), 0);
-                const converted = rows.reduce((s, rr) => {
-                    const src = Number.isFinite(rr.__parsed_amount_original) ? rr.__parsed_amount_original : 0;
-                    const currency = (rr.__currency || 'USD').toUpperCase();
-                    if (currency === 'EUR') return s + src * eurRate;
-                    if (currency === 'COP') return s + src * copRate;
-                    return s + src;
-                }, 0);
-                return {
-                    ...fd,
-                    fileTotalSource: sourceTotal,
-                    fileTotalConverted: converted
-                };
-            });
+            updateDiagnosticsTotals();
         }
 
         // provider aggregation helpers (same as v13)
@@ -1628,6 +1801,121 @@
             if (document.getElementById('revView').classList.contains('active')) renderRevenueStack();
         }
 
+        function renderLandingInsights() {
+            const container = document.getElementById('landingInsights');
+            if (!container) return;
+            if (!normalized || normalized.length === 0) {
+                container.innerHTML = `
+                    <div class="landing-card full-span">
+                        <h4>Load your royalty statements</h4>
+                        <div class="small">Upload SGAE, ASCAP, or Warner Chappell CSV files to unlock highlights, trends, and diagnostics.</div>
+                        <div class="insight-note small">Once data is loaded you will see provider mix, latest quarter performance, and data health here.</div>
+                    </div>`;
+                return;
+            }
+
+            const totalUsd = normalized.reduce((sum, row) => sum + (row.amount || 0), 0);
+            const providerTotals = new Map();
+            normalized.forEach(row => {
+                const provider = row.provider || 'Other';
+                const current = providerTotals.get(provider) || 0;
+                providerTotals.set(provider, current + (row.amount || 0));
+            });
+            const providerEntries = Array.from(providerTotals.entries()).sort((a, b) => b[1] - a[1]);
+            const maxProviders = 4;
+            const topProviders = providerEntries.slice(0, maxProviders);
+            const remainingProviders = providerEntries.slice(maxProviders);
+            const providerItems = [];
+            topProviders.forEach(([provider, value]) => {
+                const percent = totalUsd > 0 ? ` · ${formatPercent(value, totalUsd)}` : '';
+                providerItems.push(`<li class="insight-pill"><span>${escapeHtml(provider)}</span><span class="muted">${formatCurrency(value)}${percent}</span></li>`);
+            });
+            if (remainingProviders.length) {
+                const otherTotal = remainingProviders.reduce((sum, [, value]) => sum + value, 0);
+                const percent = totalUsd > 0 ? ` · ${formatPercent(otherTotal, totalUsd)}` : '';
+                providerItems.push(`<li class="insight-pill"><span>Other providers</span><span class="muted">${formatCurrency(otherTotal)}${percent}</span></li>`);
+            }
+            if (!providerItems.length) {
+                providerItems.push('<li class="insight-pill"><span>No provider totals yet</span><span class="muted">Upload data to view mix</span></li>');
+            }
+
+            const quarterTotals = new Map();
+            normalized.forEach(row => {
+                const label = row.quarter && row.quarter !== 'Unknown' ? row.quarter : null;
+                if (!label) return;
+                const existing = quarterTotals.get(label) || { label, total: 0, date: null };
+                existing.total += row.amount || 0;
+                if (!existing.date) {
+                    const dt = row.quarterDate instanceof Date && !isNaN(row.quarterDate) ? row.quarterDate : quarterLabelToDate(label);
+                    if (dt) existing.date = dt;
+                }
+                quarterTotals.set(label, existing);
+            });
+            const quarterEntries = Array.from(quarterTotals.values()).sort((a, b) => {
+                const aDate = a.date instanceof Date && !isNaN(a.date) ? a.date.getTime() : (quarterLabelToDate(a.label)?.getTime() || 0);
+                const bDate = b.date instanceof Date && !isNaN(b.date) ? b.date.getTime() : (quarterLabelToDate(b.label)?.getTime() || 0);
+                return aDate - bDate;
+            });
+            const latestQuarters = quarterEntries.slice(-4).reverse();
+            const quarterItems = latestQuarters.length
+                ? latestQuarters.map(entry => `<li class="insight-pill"><span>${escapeHtml(entry.label)}</span><span class="muted">${formatCurrency(entry.total)}</span></li>`)
+                : ['<li class="insight-pill"><span>No quartered data yet</span><span class="muted">Adjust mappings or add period columns</span></li>'];
+
+            const filesLoaded = fileDiagnostics.length;
+            const rowCount = normalized.length;
+            const uniqueProviders = providerEntries.map(([provider]) => provider);
+            const currencies = Array.from(new Set(normalized.map(row => row.raw_currency).filter(Boolean)));
+            const missingDates = normalized.filter(row => !row.quarterDate).length;
+            const missingShare = rowCount > 0 ? formatPercent(missingDates, rowCount) : '—';
+
+            container.innerHTML = `
+                <div class="landing-card">
+                    <h4>Provider mix</h4>
+                    <ul class="insight-list">${providerItems.join('')}</ul>
+                </div>
+                <div class="landing-card">
+                    <h4>Latest quarters</h4>
+                    <ul class="insight-list">${quarterItems.join('')}</ul>
+                </div>
+                <div class="landing-card full-span">
+                    <h4>Data health</h4>
+                    <div class="insight-metric">
+                        <span class="label">Files loaded</span>
+                        <span class="value">${formatNumber(filesLoaded)}</span>
+                    </div>
+                    <div class="insight-metric">
+                        <span class="label">Rows normalized</span>
+                        <span class="value">${formatNumber(rowCount)}</span>
+                    </div>
+                    <div class="insight-metric">
+                        <span class="label">Distinct quarters</span>
+                        <span class="value">${quarterEntries.length ? formatNumber(quarterEntries.length) : '—'}</span>
+                    </div>
+                    <div class="insight-note small">Providers tracked: ${uniqueProviders.length ? escapeHtml(uniqueProviders.join(', ')) : '—'}</div>
+                    <div class="insight-note small">Currencies detected: ${currencies.length ? escapeHtml(currencies.join(', ')) : '—'}</div>
+                    <div class="insight-note small">Rows missing period: ${missingDates ? `${formatNumber(missingDates)} (${missingShare})` : 'All rows mapped'}</div>
+                </div>`;
+        }
+
+        function updateDiagnosticsTotals() {
+            if (!Array.isArray(fileDiagnostics) || fileDiagnostics.length === 0) return;
+            const sourceTotals = new Map();
+            const convertedTotals = new Map();
+            normalized.forEach(row => {
+                if (!row || !row.__source_file) return;
+                const key = row.__source_file;
+                const sourceVal = Number.isFinite(row.source_amount) ? row.source_amount : 0;
+                const usdVal = Number.isFinite(row.amount) ? row.amount : 0;
+                sourceTotals.set(key, (sourceTotals.get(key) || 0) + sourceVal);
+                convertedTotals.set(key, (convertedTotals.get(key) || 0) + usdVal);
+            });
+            fileDiagnostics.forEach(diag => {
+                if (!diag) return;
+                if (sourceTotals.has(diag.file)) diag.fileTotalSource = sourceTotals.get(diag.file);
+                if (convertedTotals.has(diag.file)) diag.fileTotalConverted = convertedTotals.get(diag.file);
+            });
+        }
+
         function renderLandingKpis() {
             const total = normalized.reduce((s, r) => s + (r.amount || 0), 0);
             const last12 = (() => {
@@ -1654,39 +1942,106 @@
                     </div>
                 </div>`;
             document.getElementById('kpiTiles').innerHTML = kpiHtml;
+            renderLandingInsights();
             showDiagnostics();
         }
 
         function showDiagnostics() {
             const el = document.getElementById('fileList');
+            if (!el) return;
             if (!fileDiagnostics || fileDiagnostics.length === 0) {
-                el.textContent = 'No files loaded';
+                el.innerHTML = '<div class="diagnostics-empty">No files loaded yet. Upload statements to review detected mappings.</div>';
                 return;
             }
             const rateInfo = `Live EUR→USD: ${liveRates.EUR ? liveRates.EUR.toFixed(4) : 'n/a'} | Live COP→USD: ${liveRates.COP ? liveRates.COP.toFixed(6) : 'n/a'} — Overrides: EUR=${manualRates.EUR ?? 'auto'}, COP=${manualRates.COP ?? 'auto'}`;
-            const html = fileDiagnostics.map((d, i) => {
+            const summary = `<div class="small">Loaded ${fileDiagnostics.length} file(s) — ${formatNumber(rawDataRows.length)} rows total.</div>`;
+            const entries = fileDiagnostics.map((d, i) => {
                 const headers = Array.isArray(d.headers) ? d.headers : [];
-                const amountOptions = [`<option value="">Select column</option>`]
-                    .concat(headers.map(h => `<option value="${escapeAttr(h)}"${d.mapping.amountCol === h ? ' selected' : ''}>${escapeHtml(h)}</option>`))
+                const mapping = d.mapping || {};
+                const providerLabel = d.provider || 'Unknown';
+                const providerOverride = d.providerOverride || 'auto';
+                const providerCandidates = Array.from(new Set(['ASCAP (Dom)', 'ASCAP (Int)', 'SGAE', 'WARNER CHAPPELL', 'Other', providerLabel].filter(Boolean)));
+                const providerOptions = [`<option value="auto"${providerOverride === 'auto' ? ' selected' : ''}>Auto detect (${escapeHtml(providerLabel)})</option>`]
+                    .concat(providerCandidates.map(p => `<option value="${escapeAttr(p)}"${providerOverride === p ? ' selected' : ''}>${escapeHtml(p)}</option>`))
                     .join('');
-                const dedOptions = [`<option value=""${d.mapping.dedCol ? '' : ' selected'}>None</option>`]
-                    .concat(headers.map(h => `<option value="${escapeAttr(h)}"${d.mapping.dedCol === h ? ' selected' : ''}>${escapeHtml(h)}</option>`))
-                    .join('');
+                const renderOptions = (selected, { allowEmpty = false, emptyLabel = 'None', placeholder = null } = {}) => {
+                    const opts = [];
+                    if (allowEmpty) {
+                        opts.push(`<option value=""${!selected ? ' selected' : ''}>${escapeHtml(emptyLabel)}</option>`);
+                    } else if (placeholder) {
+                        opts.push(`<option value="" disabled${selected ? '' : ' selected'}>${escapeHtml(placeholder)}</option>`);
+                    }
+                    headers.forEach(h => {
+                        opts.push(`<option value="${escapeAttr(h)}"${selected === h ? ' selected' : ''}>${escapeHtml(h)}</option>`);
+                    });
+                    if (selected && !headers.includes(selected)) {
+                        opts.push(`<option value="${escapeAttr(selected)}" selected>${escapeHtml(selected)} (missing)</option>`);
+                    }
+                    return opts.join('');
+                };
+                const amountOptions = renderOptions(mapping.amountCol, { placeholder: 'Select column' });
+                const dedDisabled = d.provider === 'WARNER CHAPPELL' || d.dedIsAlwaysZero;
+                const dedOptions = renderOptions(mapping.dedCol, { allowEmpty: true, emptyLabel: dedDisabled ? 'Not applicable' : 'None' });
+                const periodOptions = renderOptions(mapping.periodCol, { allowEmpty: true, emptyLabel: 'Auto / None' });
+                const periodYearOptions = renderOptions(mapping.periodYearCol, { allowEmpty: true, emptyLabel: 'Auto / None' });
+                const periodQuarterOptions = renderOptions(mapping.periodQuarterCol, { allowEmpty: true, emptyLabel: 'Auto / None' });
+                const titleOptions = renderOptions(mapping.titleCol, { allowEmpty: true, emptyLabel: 'Auto / None' });
+                const territoryOptions = renderOptions(mapping.territoryCol, { allowEmpty: true, emptyLabel: 'Auto / None' });
+                const periodParts = [];
+                if (mapping.periodCol) periodParts.push(`date → ${mapping.periodCol}`);
+                if (mapping.periodYearCol) periodParts.push(`year → ${mapping.periodYearCol}`);
+                if (mapping.periodQuarterCol) periodParts.push(`quarter → ${mapping.periodQuarterCol}`);
+                const mappingSummary = [
+                    `Gross: <strong>${escapeHtml(mapping.amountCol || 'Not set')}</strong>`,
+                    `Deduction: <strong>${escapeHtml(mapping.dedCol || (dedDisabled ? 'Not applicable' : 'None'))}</strong>`,
+                    `Period: <strong>${escapeHtml(periodParts.length ? periodParts.join(' · ') : 'Auto')}</strong>`,
+                    `Title: <strong>${escapeHtml(mapping.titleCol || 'Auto')}</strong>`,
+                    `Territory: <strong>${escapeHtml(mapping.territoryCol || 'Auto')}</strong>`
+                ].join(' • ');
+                const sourceTotal = Number.isFinite(d.fileTotalSource) ? d.fileTotalSource : (Number.isFinite(d.fileTotal) ? d.fileTotal : 0);
                 return `
-                    <div class="diag-item" style="margin-bottom:12px;padding:8px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04)">
-                        <div><strong>${escapeHtml(d.file)}</strong> — provider: ${escapeHtml(d.provider)} — rows: ${formatNumber(d.rows)} — source total: ${formatNumber(d.fileTotalSource || d.fileTotal)} — converted total (USD): ${formatCurrency(d.fileTotalConverted || 0)}</div>
-                        <div class="small" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-                            <span>Gross column</span>
-                            <select id="mappingAmount-${i}" class="small-input">${amountOptions}</select>
-                            <span>Deduction column</span>
-                            <select id="mappingDed-${i}" class="small-input">${dedOptions}</select>
+                    <div class="diagnostics-entry">
+                        <header>
+                            <div>
+                                <strong>${escapeHtml(d.file)}</strong>
+                                <span class="meta">Detected: ${escapeHtml(providerLabel)}</span>
+                            </div>
+                            <div class="meta">Rows: ${formatNumber(d.rows)} · Source net: ${formatNumber(sourceTotal)} · USD: ${formatCurrency(d.fileTotalConverted || 0)}</div>
+                        </header>
+                        <div class="small" style="margin-top:8px">${mappingSummary}</div>
+                        <div class="diagnostics-grid">
+                            <label>Provider
+                                <select id="mappingProvider-${i}" class="diag-select">${providerOptions}</select>
+                            </label>
+                            <label>Gross column
+                                <select id="mappingAmount-${i}" class="diag-select">${amountOptions}</select>
+                            </label>
+                            <label>Deduction column
+                                <select id="mappingDed-${i}" class="diag-select"${dedDisabled ? ' disabled' : ''}>${dedOptions}</select>
+                            </label>
+                            <label>Period column
+                                <select id="mappingPeriod-${i}" class="diag-select">${periodOptions}</select>
+                            </label>
+                            <label>Distribution year
+                                <select id="mappingPeriodYear-${i}" class="diag-select">${periodYearOptions}</select>
+                            </label>
+                            <label>Distribution quarter
+                                <select id="mappingPeriodQuarter-${i}" class="diag-select">${periodQuarterOptions}</select>
+                            </label>
+                            <label>Title column
+                                <select id="mappingTitle-${i}" class="diag-select">${titleOptions}</select>
+                            </label>
+                            <label>Territory column
+                                <select id="mappingTerritory-${i}" class="diag-select">${territoryOptions}</select>
+                            </label>
+                        </div>
+                        <div class="diagnostics-actions">
                             <button onclick="saveMapping(${i})" class="muted">Apply mapping</button>
                             <button onclick="reparseFile(${i})" class="muted">Auto-detect</button>
                         </div>
-                        <div class="small" style="margin-top:6px">Current mapping → ${escapeHtml(JSON.stringify(d.mapping))}</div>
                     </div>`;
             }).join('');
-            el.innerHTML = `<div style="margin-bottom:8px">Loaded ${fileDiagnostics.length} file(s) — ${rawDataRows.length} rows total.</div><div style="max-height:220px;overflow:auto;padding:8px;border-radius:8px;background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02)">${html}</div><div style="margin-top:8px"><strong>Rate info:</strong> ${rateInfo}</div>`;
+            el.innerHTML = `${summary}${entries}<div class="diagnostics-note"><strong>Rates:</strong> ${rateInfo}</div>`;
         }
 
         function saveMapping(idx) {
@@ -1694,37 +2049,118 @@
             if (!diag) return alert('No mapping found for this file.');
             const amountSelect = document.getElementById(`mappingAmount-${idx}`);
             const dedSelect = document.getElementById(`mappingDed-${idx}`);
-            if (!amountSelect) return alert('Missing gross column selector.');
+            const providerSelect = document.getElementById(`mappingProvider-${idx}`);
+            const periodSelect = document.getElementById(`mappingPeriod-${idx}`);
+            const periodYearSelect = document.getElementById(`mappingPeriodYear-${idx}`);
+            const periodQuarterSelect = document.getElementById(`mappingPeriodQuarter-${idx}`);
+            const titleSelect = document.getElementById(`mappingTitle-${idx}`);
+            const territorySelect = document.getElementById(`mappingTerritory-${idx}`);
+            if (!amountSelect) {
+                alert('Missing gross column selector.');
+                return;
+            }
             const amountCol = amountSelect.value;
-            const dedCol = dedSelect ? dedSelect.value : '';
             if (!amountCol) {
                 alert('Please choose a gross column before applying.');
                 return;
             }
+            const pickValue = (selectEl, fallback = null) => {
+                if (!selectEl) return fallback;
+                const val = selectEl.value;
+                return val === '' ? null : val;
+            };
+            let dedCol = '';
+            if (dedSelect && !dedSelect.disabled) {
+                dedCol = dedSelect.value || '';
+            } else if (!dedSelect && diag.mapping && diag.mapping.dedCol) {
+                dedCol = diag.mapping.dedCol;
+            }
+            const periodCol = pickValue(periodSelect, diag.mapping ? diag.mapping.periodCol : null);
+            const periodYearCol = pickValue(periodYearSelect, diag.mapping ? diag.mapping.periodYearCol : null);
+            const periodQuarterCol = pickValue(periodQuarterSelect, diag.mapping ? diag.mapping.periodQuarterCol : null);
+            const titleCol = pickValue(titleSelect, diag.mapping ? diag.mapping.titleCol : null);
+            const territoryCol = pickValue(territorySelect, diag.mapping ? diag.mapping.territoryCol : null);
+            const providerOverride = providerSelect ? providerSelect.value || 'auto' : 'auto';
+            diag.providerOverride = providerOverride;
             const rows = rawDataRows.filter(r => r.__source_file === diag.file);
             if (!rows.length) {
                 alert('No rows available for this file.');
                 return;
             }
+            const providerCounts = new Map();
             rows.forEach(r => {
                 const gross = parseAmountSmart(r[amountCol]);
                 const ded = dedCol ? parseAmountSmart(r[dedCol]) : 0;
                 const net = Number.isFinite(gross) ? (Number.isFinite(ded) ? gross - ded : gross) : NaN;
                 r.__parsed_amount_original = Number.isFinite(net) ? net : NaN;
+                const baseProvider = providerOverride === 'auto' ? (diag.provider || 'Other') : providerOverride;
+                const resolvedProvider = resolveProviderLabel(baseProvider, r, amountCol, diag.fileTypeHeader);
+                providerCounts.set(resolvedProvider, (providerCounts.get(resolvedProvider) || 0) + 1);
+                r.__detected_provider = resolvedProvider;
+                r.__currency = resolvedProvider === 'SGAE' ? 'EUR' : (resolvedProvider === 'WARNER CHAPPELL' ? 'COP' : 'USD');
+                if (titleCol) r.__work_title_candidate = r[titleCol];
+                else if (titleCol === null) delete r.__work_title_candidate;
+                if (territoryCol) r.__territory_candidate = r[territoryCol];
+                else if (territoryCol === null) delete r.__territory_candidate;
+                if (periodCol) r.__period_raw = r[periodCol];
+                else delete r.__period_raw;
+                delete r.__period_date_override;
+                delete r.__quarter_override;
+                const effectivePeriodCol = periodCol;
+                const effectiveYearCol = periodYearCol;
+                const effectiveQuarterCol = periodQuarterCol;
+                if (resolvedProvider === 'WARNER CHAPPELL' && effectivePeriodCol) {
+                    const parsedWarner = parseWarnerPeriod(r[effectivePeriodCol]);
+                    if (parsedWarner) {
+                        r.__period_date_override = parsedWarner.date;
+                        r.__quarter_override = parsedWarner.quarter;
+                    }
+                } else if (resolvedProvider === 'ASCAP (Dom)') {
+                    const parsedAscDom = parseAscDomesticPeriod(
+                        effectiveYearCol ? r[effectiveYearCol] : undefined,
+                        effectiveQuarterCol ? r[effectiveQuarterCol] : undefined,
+                        effectivePeriodCol ? r[effectivePeriodCol] : undefined
+                    );
+                    if (parsedAscDom) {
+                        r.__period_date_override = parsedAscDom.date;
+                        r.__quarter_override = parsedAscDom.quarter;
+                    }
+                }
                 r.__mapping = Object.assign({}, r.__mapping, {
                     amountCol,
-                    dedCol: dedCol || null
+                    dedCol: dedCol ? dedCol : null,
+                    titleCol: titleCol || null,
+                    periodCol: periodCol || null,
+                    territoryCol: territoryCol || null,
+                    periodYearCol: periodYearCol || null,
+                    periodQuarterCol: periodQuarterCol || null,
+                    provider: resolvedProvider
                 });
             });
-            diag.mapping.amountCol = amountCol;
-            diag.mapping.dedCol = dedCol || null;
+            const finalProvider = providerCounts.size
+                ? Array.from(providerCounts.entries()).sort((a, b) => b[1] - a[1])[0][0]
+                : (providerOverride === 'auto' ? (diag.provider || 'Other') : providerOverride);
+            const sourceTotal = rows.reduce((sum, row) => sum + (Number.isFinite(row.__parsed_amount_original) ? row.__parsed_amount_original : 0), 0);
+            diag.provider = finalProvider;
+            diag.mapping = Object.assign({}, diag.mapping, {
+                amountCol,
+                dedCol: dedCol ? dedCol : null,
+                titleCol: titleCol || null,
+                periodCol: periodCol || null,
+                territoryCol: territoryCol || null,
+                periodYearCol: periodYearCol || null,
+                periodQuarterCol: periodQuarterCol || null,
+                provider: finalProvider
+            });
+            diag.dedIsAlwaysZero = finalProvider === 'WARNER CHAPPELL';
+            diag.fileTotal = sourceTotal;
+            diag.fileTotalSource = sourceTotal;
             normalized = normalizeDataFromCsv(rawDataRows);
             convertCurrenciesToUSD().then(() => {
                 refreshVisualsAfterConversion();
                 alert('Mapping updated and reprocessed.');
             });
         }
-
         function reparseFile(idx) {
             const diag = fileDiagnostics[idx];
             if (!diag) return;
@@ -1732,6 +2168,10 @@
             const rows = rawDataRows.filter(r => r.__source_file === file);
             if (!rows.length) return alert('No rows for file');
             const headers = Object.keys(rows[0] || {});
+            const detection = detectProvider(headers);
+            const providerGuess = detection.provider;
+            diag.fileTypeHeader = detection.fileTypeHeader || diag.fileTypeHeader || null;
+            diag.providerOverride = 'auto';
             const headerLookup = new Map();
             const compactLookup = new Map();
             headers.forEach(h => {
@@ -1750,86 +2190,124 @@
                 }
                 return null;
             };
-            let amountCol = headers.find(h => /importe|monto|amount|total|dollars|usd/i.test(h)) || headers[0];
-            let dedCol = headers.find(h => /dto|administr|admin|deduc|descuento/i.test(h)) || null;
+            let amountCol = null,
+                dedCol = null,
+                titleCol = null,
+                periodCol = null,
+                territoryCol = null,
+                periodYearCol = null,
+                periodQuarterCol = null;
             let dedIsAlwaysZero = false;
-            let periodYearCol = diag.mapping.periodYearCol || pickHeader('Distribution Year', 'DistributionYear', 'Royalty Year', 'Year');
-            let periodQuarterCol = diag.mapping.periodQuarterCol || pickHeader('Distribution Quarter', 'DistributionQuarter', 'Royalty Quarter', 'Quarter');
-            if (diag.provider === 'SGAE') {
-                amountCol = pickHeader(SGAE_HEADERS.GROSS) || amountCol;
-                dedCol = pickHeader(SGAE_HEADERS.DEDUCTION) || dedCol;
-            } else if (diag.provider === 'WARNER CHAPPELL') {
-                amountCol = pickHeader('amount_paid_less_tax', 'amount_paid') || amountCol;
+            if (providerGuess === 'SGAE') {
+                amountCol = pickHeader(SGAE_HEADERS.GROSS) || headers[0];
+                dedCol = pickHeader(SGAE_HEADERS.DEDUCTION);
+                titleCol = pickHeader(SGAE_HEADERS.WORK_TITLE);
+                periodCol = pickHeader(SGAE_HEADERS.PERIOD);
+            } else if (providerGuess === 'WARNER CHAPPELL') {
+                amountCol = pickHeader('amount_paid_less_tax', 'amount_paid') || headers[0];
                 dedCol = null;
+                titleCol = pickHeader('tango_work_title', 'tango_work_code');
+                periodCol = pickHeader('royalty_period');
+                territoryCol = pickHeader('source_territory_name', 'processing_territory_name');
                 dedIsAlwaysZero = true;
-            } else if (diag.provider === 'ASCAP (Dom)') {
-                amountCol = pickHeader('Dollars', 'Dollar Amount', 'Net Amount', 'Net Amount USD', 'Net Royalty', 'Net USD', 'Amount Paid', 'Gross Amount') || amountCol;
+            } else if (providerGuess === 'ASCAP (Dom)') {
+                amountCol = pickHeader('Dollars', 'Dollar Amount', 'Net Amount', 'Net Amount USD', 'Net Royalty', 'Net USD', 'Amount Paid', 'Gross Amount') || headers.find(h => /amount|total|usd|net/i.test(h)) || headers[0];
+                dedCol = headers.find(h => /dto|administr|admin|deduc|descuento/i.test(h)) || null;
+                titleCol = headers.find(h => /title|obra|work|tit/i.test(h));
+                periodYearCol = pickHeader('Distribution Year', 'DistributionYear', 'Royalty Year', 'Year');
+                periodQuarterCol = pickHeader('Distribution Quarter', 'DistributionQuarter', 'Royalty Quarter', 'Quarter');
+                periodCol = headers.find(h => /period|peri|date|fecha/i.test(h));
+                if (!periodCol) periodCol = periodQuarterCol || periodYearCol;
+            } else {
+                amountCol = headers.find(h => /amount|importe|monto|total|usd|net/i.test(h)) || headers[0];
+                dedCol = headers.find(h => /dto|administr|admin|deduc|descuento/i.test(h)) || null;
+                titleCol = headers.find(h => /title|obra|work|tit/i.test(h)) || null;
+                periodCol = headers.find(h => /period|peri|date|fecha/i.test(h)) || null;
             }
-            const territoryCol = diag.mapping.territoryCol || pickHeader('source_territory_name', 'processing_territory_name');
-            const titleCol = (diag.mapping && diag.mapping.titleCol) || pickHeader('tango_work_title', 'title');
-            let periodCol = (diag.mapping && diag.mapping.periodCol) || pickHeader('royalty_period', 'periodo origen', 'period');
-            if (!periodCol && diag.provider === 'ASCAP (Dom)') periodCol = periodQuarterCol || periodYearCol || periodCol;
+            if (!amountCol) amountCol = headers[0];
+            const providerCounts = new Map();
             rows.forEach(r => {
-                const gross = amountCol ? parseAmountSmart(r[amountCol]) : NaN;
+                const gross = parseAmountSmart(r[amountCol]);
                 const ded = dedIsAlwaysZero ? 0 : (dedCol ? parseAmountSmart(r[dedCol]) : 0);
-                r.__parsed_amount_original = Number.isFinite(gross) ? (Number.isFinite(ded) ? gross - ded : gross) : NaN;
+                const net = Number.isFinite(gross) ? (Number.isFinite(ded) ? gross - ded : gross) : NaN;
+                r.__parsed_amount_original = Number.isFinite(net) ? net : NaN;
+                if (periodCol) r.__period_raw = r[periodCol];
+                else delete r.__period_raw;
                 delete r.__period_date_override;
                 delete r.__quarter_override;
-                if (periodCol) {
-                    r.__period_raw = r[periodCol];
-                }
-                if (diag.provider === 'WARNER CHAPPELL') {
-                    if (periodCol && r[periodCol] !== undefined) {
-                        const parsed = parseWarnerPeriod(r[periodCol]);
-                        if (parsed) {
-                            r.__period_date_override = parsed.date;
-                            r.__quarter_override = parsed.quarter;
-                        }
+                if (titleCol) r.__work_title_candidate = r[titleCol];
+                if (territoryCol) r.__territory_candidate = r[territoryCol];
+                else delete r.__territory_candidate;
+                const resolvedProvider = resolveProviderLabel(providerGuess, r, amountCol, diag.fileTypeHeader);
+                providerCounts.set(resolvedProvider, (providerCounts.get(resolvedProvider) || 0) + 1);
+                r.__detected_provider = resolvedProvider;
+                r.__currency = resolvedProvider === 'SGAE' ? 'EUR' : (resolvedProvider === 'WARNER CHAPPELL' ? 'COP' : 'USD');
+                if (resolvedProvider === 'WARNER CHAPPELL' && periodCol) {
+                    const parsedWarner = parseWarnerPeriod(r[periodCol]);
+                    if (parsedWarner) {
+                        r.__period_date_override = parsedWarner.date;
+                        r.__quarter_override = parsedWarner.quarter;
                     }
-                } else if (diag.provider === 'ASCAP (Dom)') {
-                    const parsed = parseAscDomesticPeriod(
+                } else if (resolvedProvider === 'ASCAP (Dom)') {
+                    const parsedAscDom = parseAscDomesticPeriod(
                         periodYearCol ? r[periodYearCol] : undefined,
                         periodQuarterCol ? r[periodQuarterCol] : undefined,
                         periodCol ? r[periodCol] : undefined
                     );
-                    if (parsed) {
-                        r.__period_date_override = parsed.date;
-                        r.__quarter_override = parsed.quarter;
+                    if (parsedAscDom) {
+                        r.__period_date_override = parsedAscDom.date;
+                        r.__quarter_override = parsedAscDom.quarter;
                     }
                 }
-                if (territoryCol) r.__territory_candidate = r[territoryCol];
                 r.__mapping = {
                     amountCol,
-                    dedCol: dedIsAlwaysZero ? null : dedCol,
-                    titleCol: titleCol || (r.__mapping ? r.__mapping.titleCol : diag.mapping.titleCol),
-                    periodCol: periodCol || (r.__mapping ? r.__mapping.periodCol : diag.mapping.periodCol),
-                    provider: r.__mapping ? r.__mapping.provider : diag.mapping.provider,
-                    territoryCol: territoryCol || (r.__mapping ? r.__mapping.territoryCol : diag.mapping.territoryCol || null),
-                    periodYearCol: periodYearCol || (r.__mapping ? r.__mapping.periodYearCol : diag.mapping.periodYearCol || null),
-                    periodQuarterCol: periodQuarterCol || (r.__mapping ? r.__mapping.periodQuarterCol : diag.mapping.periodQuarterCol || null)
+                    dedCol: dedIsAlwaysZero ? null : (dedCol || null),
+                    titleCol: titleCol || null,
+                    periodCol: periodCol || null,
+                    territoryCol: territoryCol || null,
+                    periodYearCol: periodYearCol || null,
+                    periodQuarterCol: periodQuarterCol || null,
+                    provider: resolvedProvider
                 };
             });
-            diag.mapping.amountCol = amountCol;
-            diag.mapping.dedCol = dedIsAlwaysZero ? null : dedCol;
-            diag.mapping.territoryCol = territoryCol || null;
-            if (titleCol) diag.mapping.titleCol = titleCol;
-            if (periodCol) diag.mapping.periodCol = periodCol;
-            diag.mapping.periodYearCol = periodYearCol || null;
-            diag.mapping.periodQuarterCol = periodQuarterCol || null;
+            const finalProvider = providerCounts.size
+                ? Array.from(providerCounts.entries()).sort((a, b) => b[1] - a[1])[0][0]
+                : providerGuess;
+            const sourceTotal = rows.reduce((sum, row) => sum + (Number.isFinite(row.__parsed_amount_original) ? row.__parsed_amount_original : 0), 0);
+            diag.provider = finalProvider;
+            diag.mapping = {
+                amountCol,
+                dedCol: dedIsAlwaysZero ? null : (dedCol || null),
+                titleCol: titleCol || null,
+                periodCol: periodCol || null,
+                territoryCol: territoryCol || null,
+                periodYearCol: periodYearCol || null,
+                periodQuarterCol: periodQuarterCol || null,
+                provider: finalProvider
+            };
+            diag.dedIsAlwaysZero = dedIsAlwaysZero;
             diag.headers = headers;
+            diag.fileTotal = sourceTotal;
+            diag.fileTotalSource = sourceTotal;
             normalized = normalizeDataFromCsv(rawDataRows);
             convertCurrenciesToUSD().then(() => {
                 refreshVisualsAfterConversion();
                 alert('Re-detection done.');
             });
         }
-
         function formatCurrency(v) {
             return new Intl.NumberFormat('en-US', {
                 style: 'currency',
                 currency: 'USD',
                 maximumFractionDigits: 2
             }).format(v);
+        }
+
+        function formatPercent(value, total) {
+            if (!Number.isFinite(value) || !Number.isFinite(total) || total === 0) return '—';
+            const pct = (value / total) * 100;
+            const digits = pct >= 10 ? 1 : 2;
+            return `${pct.toFixed(digits)}%`;
         }
 
         function formatNumber(v) {
