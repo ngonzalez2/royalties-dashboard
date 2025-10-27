@@ -633,7 +633,7 @@
                     out.quarter = 'Unknown';
                     out.quarterDate = null;
                 }
-                out.revenue_class_description = (r['DESCRIP. CONCEP'] || '').toString();
+                out.revenue_class_description = pickRevenueClassValue(r);
                 out.country_name = r['PAIS'] || r['PROCEDENCIA'] || r['country'] || '';
                 out.__source_file = r.__source_file;
                 return out;
@@ -947,13 +947,24 @@
             });
         }
 
-        // revenue stack logic (DESCRIP. CONCEP)
+        // revenue stack logic (DESCRIP. CONCEP / Revenue Class Description / Music User Genre)
         function normalizeClassLabel(raw) {
             if (raw === null || raw === undefined) return 'Unspecified';
             let s = String(raw).trim();
             if (s === '') return 'Unspecified';
             s = s.replace(/\s+/g, ' ').replace(/\.$/, '').trim();
             return s;
+        }
+
+        function pickRevenueClassValue(record) {
+            const fields = ['DESCRIP. CONCEP', 'Revenue Class Description', 'Music User Genre'];
+            for (const key of fields) {
+                const raw = record[key];
+                if (raw === null || raw === undefined) continue;
+                const s = String(raw).trim();
+                if (s !== '') return s;
+            }
+            return '';
         }
 
         function buildRevenueTable(data) {
