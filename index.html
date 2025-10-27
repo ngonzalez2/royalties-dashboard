@@ -937,6 +937,23 @@
                         territoryCol = pickHeader('source_territory_name', 'processing_territory_name');
                         dedCol = null;
                         dedIsAlwaysZero = true;
+                    } else if (provider === 'ASCAP (Dom)') {
+                        amountCol = pickHeader(
+                            'Dollars',
+                            'Dollar Amount',
+                            'Net Amount',
+                            'Net Amount USD',
+                            'Net Royalty',
+                            'Net USD',
+                            'Amount Paid',
+                            'Gross Amount'
+                        );
+                        if (!amountCol) {
+                            amountCol = headers.find(h => /dollar|amount|importe|monto|total/i.test(h)) || headers[0];
+                        }
+                        titleCol = headers.find(h => /title|obra|work|tit/i.test(h));
+                        periodCol = headers.find(h => /period|peri|date|fecha/i.test(h));
+                        dedCol = headers.find(h => /dto|administr|admin|deduc/i.test(h));
                     } else {
                         amountCol = headers.find(h => /amount|dollar|importe|monto|total/i.test(h)) || headers[0];
                         titleCol = headers.find(h => /title|obra|work|tit/i.test(h));
