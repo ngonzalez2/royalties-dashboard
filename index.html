@@ -923,7 +923,9 @@
                         dedCol = null,
                         titleCol = null,
                         periodCol = null,
-                        territoryCol = null;
+                        territoryCol = null,
+                        periodYearCol = null,
+                        periodQuarterCol = null;
                     let dedIsAlwaysZero = false;
                     if (provider === 'SGAE') {
                         if (headers.includes(SGAE_HEADERS.GROSS)) amountCol = SGAE_HEADERS.GROSS;
@@ -952,7 +954,10 @@
                             amountCol = headers.find(h => /dollar|amount|importe|monto|total/i.test(h)) || headers[0];
                         }
                         titleCol = headers.find(h => /title|obra|work|tit/i.test(h));
+                        periodYearCol = pickHeader('Distribution Year', 'DistributionYear', 'Royalty Year', 'Year');
+                        periodQuarterCol = pickHeader('Distribution Quarter', 'DistributionQuarter', 'Royalty Quarter', 'Quarter');
                         periodCol = headers.find(h => /period|peri|date|fecha/i.test(h));
+                        if (!periodCol) periodCol = periodQuarterCol || periodYearCol;
                         dedCol = headers.find(h => /dto|administr|admin|deduc/i.test(h));
                     } else {
                         amountCol = headers.find(h => /amount|dollar|importe|monto|total/i.test(h)) || headers[0];
@@ -974,7 +979,9 @@
                             titleCol,
                             periodCol,
                             provider: r.__detected_provider,
-                            territoryCol: territoryCol || null
+                            territoryCol: territoryCol || null,
+                            periodYearCol: periodYearCol || null,
+                            periodQuarterCol: periodQuarterCol || null
                         };
                         if (titleCol) r.__work_title_candidate = r[titleCol];
                         if (periodCol) {
@@ -985,6 +992,17 @@
                                     r.__period_date_override = parsedWarner.date;
                                     r.__quarter_override = parsedWarner.quarter;
                                 }
+                            }
+                        }
+                        if (provider === 'ASCAP (Dom)') {
+                            const parsedAscDom = parseAscDomesticPeriod(
+                                periodYearCol ? r[periodYearCol] : undefined,
+                                periodQuarterCol ? r[periodQuarterCol] : undefined,
+                                periodCol ? r[periodCol] : undefined
+                            );
+                            if (parsedAscDom) {
+                                r.__period_date_override = parsedAscDom.date;
+                                r.__quarter_override = parsedAscDom.quarter;
                             }
                         }
                         if (territoryCol) r.__territory_candidate = r[territoryCol];
@@ -1000,7 +1018,9 @@
                             dedCol: dedIsAlwaysZero ? null : dedCol,
                             titleCol,
                             periodCol,
-                            territoryCol
+                            territoryCol,
+                            periodYearCol: periodYearCol || null,
+                            periodQuarterCol: periodQuarterCol || null
                         },
                         rows: rows.length,
                         fileTotal: total
@@ -1041,6 +1061,49 @@
             const quarter = Math.floor(monthIndex / 3) + 1;
             const quarterStartMonth = (quarter - 1) * 3;
             const date = new Date(year, quarterStartMonth, 1);
+            if (isNaN(date)) return null;
+            return {
+                date,
+                quarter: `${year}-Q${quarter}`
+            };
+        }
+
+        function parseAscDomesticPeriod(rawYear, rawQuarter, fallbackRaw) {
+            const extractYear = (...values) => {
+                for (const value of values) {
+                    if (value === null || value === undefined) continue;
+                    const s = String(value).trim();
+                    if (s === '') continue;
+                    const match = s.match(/(19|20)\d{2}/);
+                    if (match) {
+                        const year = Number(match[0]);
+                        if (Number.isFinite(year)) return year;
+                    }
+                }
+                return null;
+            };
+            const extractQuarter = (...values) => {
+                for (const value of values) {
+                    if (value === null || value === undefined) continue;
+                    const s = String(value).trim();
+                    if (s === '') continue;
+                    const match = s.match(/Q?\s*([1-4])/i);
+                    if (match) {
+                        const q = Number(match[1]);
+                        if (Number.isFinite(q) && q >= 1 && q <= 4) return q;
+                    }
+                    const lowered = s.toLowerCase();
+                    if (/(first|1st)/.test(lowered)) return 1;
+                    if (/(second|2nd)/.test(lowered)) return 2;
+                    if (/(third|3rd)/.test(lowered)) return 3;
+                    if (/(fourth|4th)/.test(lowered)) return 4;
+                }
+                return null;
+            };
+            const year = extractYear(rawYear, fallbackRaw, rawQuarter);
+            const quarter = extractQuarter(rawQuarter, fallbackRaw);
+            if (!year || !quarter) return null;
+            const date = new Date(year, (quarter - 1) * 3, 1);
             if (isNaN(date)) return null;
             return {
                 date,
@@ -1690,6 +1753,8 @@
             let amountCol = headers.find(h => /importe|monto|amount|total|dollars|usd/i.test(h)) || headers[0];
             let dedCol = headers.find(h => /dto|administr|admin|deduc|descuento/i.test(h)) || null;
             let dedIsAlwaysZero = false;
+            let periodYearCol = diag.mapping.periodYearCol || pickHeader('Distribution Year', 'DistributionYear', 'Royalty Year', 'Year');
+            let periodQuarterCol = diag.mapping.periodQuarterCol || pickHeader('Distribution Quarter', 'DistributionQuarter', 'Royalty Quarter', 'Quarter');
             if (diag.provider === 'SGAE') {
                 amountCol = pickHeader(SGAE_HEADERS.GROSS) || amountCol;
                 dedCol = pickHeader(SGAE_HEADERS.DEDUCTION) || dedCol;
@@ -1697,26 +1762,39 @@
                 amountCol = pickHeader('amount_paid_less_tax', 'amount_paid') || amountCol;
                 dedCol = null;
                 dedIsAlwaysZero = true;
+            } else if (diag.provider === 'ASCAP (Dom)') {
+                amountCol = pickHeader('Dollars', 'Dollar Amount', 'Net Amount', 'Net Amount USD', 'Net Royalty', 'Net USD', 'Amount Paid', 'Gross Amount') || amountCol;
             }
             const territoryCol = diag.mapping.territoryCol || pickHeader('source_territory_name', 'processing_territory_name');
             const titleCol = (diag.mapping && diag.mapping.titleCol) || pickHeader('tango_work_title', 'title');
-            const periodCol = (diag.mapping && diag.mapping.periodCol) || pickHeader('royalty_period', 'periodo origen', 'period');
+            let periodCol = (diag.mapping && diag.mapping.periodCol) || pickHeader('royalty_period', 'periodo origen', 'period');
+            if (!periodCol && diag.provider === 'ASCAP (Dom)') periodCol = periodQuarterCol || periodYearCol || periodCol;
             rows.forEach(r => {
                 const gross = amountCol ? parseAmountSmart(r[amountCol]) : NaN;
                 const ded = dedIsAlwaysZero ? 0 : (dedCol ? parseAmountSmart(r[dedCol]) : 0);
                 r.__parsed_amount_original = Number.isFinite(gross) ? (Number.isFinite(ded) ? gross - ded : gross) : NaN;
+                delete r.__period_date_override;
+                delete r.__quarter_override;
                 if (periodCol) {
                     r.__period_raw = r[periodCol];
                 }
                 if (diag.provider === 'WARNER CHAPPELL') {
-                    delete r.__period_date_override;
-                    delete r.__quarter_override;
                     if (periodCol && r[periodCol] !== undefined) {
                         const parsed = parseWarnerPeriod(r[periodCol]);
                         if (parsed) {
                             r.__period_date_override = parsed.date;
                             r.__quarter_override = parsed.quarter;
                         }
+                    }
+                } else if (diag.provider === 'ASCAP (Dom)') {
+                    const parsed = parseAscDomesticPeriod(
+                        periodYearCol ? r[periodYearCol] : undefined,
+                        periodQuarterCol ? r[periodQuarterCol] : undefined,
+                        periodCol ? r[periodCol] : undefined
+                    );
+                    if (parsed) {
+                        r.__period_date_override = parsed.date;
+                        r.__quarter_override = parsed.quarter;
                     }
                 }
                 if (territoryCol) r.__territory_candidate = r[territoryCol];
@@ -1726,7 +1804,9 @@
                     titleCol: titleCol || (r.__mapping ? r.__mapping.titleCol : diag.mapping.titleCol),
                     periodCol: periodCol || (r.__mapping ? r.__mapping.periodCol : diag.mapping.periodCol),
                     provider: r.__mapping ? r.__mapping.provider : diag.mapping.provider,
-                    territoryCol: territoryCol || (r.__mapping ? r.__mapping.territoryCol : diag.mapping.territoryCol || null)
+                    territoryCol: territoryCol || (r.__mapping ? r.__mapping.territoryCol : diag.mapping.territoryCol || null),
+                    periodYearCol: periodYearCol || (r.__mapping ? r.__mapping.periodYearCol : diag.mapping.periodYearCol || null),
+                    periodQuarterCol: periodQuarterCol || (r.__mapping ? r.__mapping.periodQuarterCol : diag.mapping.periodQuarterCol || null)
                 };
             });
             diag.mapping.amountCol = amountCol;
@@ -1734,6 +1814,8 @@
             diag.mapping.territoryCol = territoryCol || null;
             if (titleCol) diag.mapping.titleCol = titleCol;
             if (periodCol) diag.mapping.periodCol = periodCol;
+            diag.mapping.periodYearCol = periodYearCol || null;
+            diag.mapping.periodQuarterCol = periodQuarterCol || null;
             diag.headers = headers;
             normalized = normalizeDataFromCsv(rawDataRows);
             convertCurrenciesToUSD().then(() => {
