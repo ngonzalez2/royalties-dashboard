@@ -618,9 +618,8 @@
             <div style="display:flex;justify-content:space-between;align-items:center">
                 <div>
                     <h3 style="margin:0">Overview</h3>
-                    <div class="small">Top works view now shows the top 10 works by income.</div>
+                    <div class="small">Upload royalty statements to populate the dashboard views.</div>
                 </div>
-                <div><button id="openTS" class="nav-btn ghost">Open Time series →</button></div>
             </div>
             <div id="landingInsights" class="landing-grid">
                 <div class="landing-card full-span">
@@ -781,7 +780,6 @@
         document.getElementById('cumBtn').addEventListener('click', () => showView('cumView'));
         document.getElementById('topBtn').addEventListener('click', () => showView('topView'));
         document.getElementById('revBtn').addEventListener('click', () => showView('revView'));
-        document.getElementById('openTS').addEventListener('click', () => showView('tsView'));
         document.querySelectorAll('.back-btn').forEach(b => b.addEventListener('click', (e) => {
             const t = e.currentTarget.dataset.target || 'landingView';
             showView(t);
@@ -1014,6 +1012,20 @@
             return false;
         }
 
+        function extractHeadersFromRows(rows) {
+            if (!Array.isArray(rows) || rows.length === 0) return [];
+            const collected = new Set();
+            for (const row of rows) {
+                if (!row || typeof row !== 'object') continue;
+                Object.keys(row).forEach(key => {
+                    if (!key || key.startsWith('__')) return;
+                    if (!collected.has(key)) collected.add(key);
+                });
+                if (collected.size) break;
+            }
+            return Array.from(collected);
+        }
+
         function resolveProviderLabel(providerGuess, row, amountCol, fileTypeHeader) {
             const normalizedGuess = (providerGuess || '').toString().trim();
             const hasFileTypeColumn = rowHasFileType(row, fileTypeHeader);
@@ -1065,11 +1077,16 @@
             if (files.length === 0) return;
             rawDataRows = [];
             fileDiagnostics = [];
+            showDiagnostics();
             for (const f of files) {
                 try {
                     const rows = await parseCsvFile(f);
-                    rows.forEach(r => r.__source_file = f.name);
-                    const headers = Object.keys(rows[0] || {});
+                    if (!rows || rows.length === 0) continue;
+                    const headers = extractHeadersFromRows(rows);
+                    if (!headers.length) {
+                        console.warn('No headers detected for', f.name);
+                        continue;
+                    }
                     const detection = detectProvider(headers);
                     const provider = detection.provider;
                     const fileTypeHeader = detection.fileTypeHeader;
@@ -1081,6 +1098,7 @@
                         headerLookup.set(normalized, h);
                         compactLookup.set(compactKey, h);
                     });
+                    rows.forEach(r => r.__source_file = f.name);
                     const pickHeader = (...candidates) => {
                         for (const cand of candidates) {
                             if (!cand) continue;
@@ -1203,6 +1221,7 @@
                         fileTotalSource: total,
                         fileTotalConverted: 0
                     });
+                    showDiagnostics();
                 } catch (err) {
                     console.error(err);
                     alert('Error parsing ' + f.name + ': ' + (err.message || err));
@@ -2087,6 +2106,10 @@
                 alert('No rows available for this file.');
                 return;
             }
+            const refreshedHeaders = extractHeadersFromRows(rows);
+            if (refreshedHeaders.length) {
+                diag.headers = refreshedHeaders;
+            }
             const providerCounts = new Map();
             rows.forEach(r => {
                 const gross = parseAmountSmart(r[amountCol]);
@@ -2153,6 +2176,7 @@
                 provider: finalProvider
             });
             diag.dedIsAlwaysZero = finalProvider === 'WARNER CHAPPELL';
+            showDiagnostics();
             diag.fileTotal = sourceTotal;
             diag.fileTotalSource = sourceTotal;
             normalized = normalizeDataFromCsv(rawDataRows);
@@ -2167,7 +2191,7 @@
             const file = diag.file;
             const rows = rawDataRows.filter(r => r.__source_file === file);
             if (!rows.length) return alert('No rows for file');
-            const headers = Object.keys(rows[0] || {});
+            const headers = extractHeadersFromRows(rows);
             const detection = detectProvider(headers);
             const providerGuess = detection.provider;
             diag.fileTypeHeader = detection.fileTypeHeader || diag.fileTypeHeader || null;
@@ -2289,6 +2313,7 @@
             diag.headers = headers;
             diag.fileTotal = sourceTotal;
             diag.fileTotalSource = sourceTotal;
+            showDiagnostics();
             normalized = normalizeDataFromCsv(rawDataRows);
             convertCurrenciesToUSD().then(() => {
                 refreshVisualsAfterConversion();
