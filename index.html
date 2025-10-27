@@ -847,6 +847,7 @@
                     fileDiagnostics.push({
                         file: f.name,
                         provider,
+                        headers,
                         mapping: {
                             amountCol,
                             dedCol,
@@ -1391,29 +1392,61 @@
                 el.textContent = 'No files loaded';
                 return;
             }
-            const rateInfo = `Live rate: ${liveRate? liveRate.toFixed(4) : 'n/a'} — Override: ${manualRate ? manualRate : 'none'}`;
-            let html = fileDiagnostics.map((d, i) => {
-                return `<div style="margin-bottom:8px"><strong>${d.file}</strong> — provider: ${d.provider} — rows: ${d.rows} — source total: ${formatNumber(d.fileTotalSource || d.fileTotal)} — converted total (USD): ${formatCurrency(d.fileTotalConverted || 0)}<div class="small" style="margin-top:6px">mapping: ${JSON.stringify(d.mapping).replace(/\"/g,'')}</div><div style="margin-top:6px"><button onclick="editMapping(${i})" class="muted">Edit mapping</button> <button onclick="reparseFile(${i})" class="muted">Re-detect</button></div></div>`;
+            const rateInfo = `Live rate: ${liveRate ? liveRate.toFixed(4) : 'n/a'} — Override: ${manualRate ? manualRate : 'none'}`;
+            const html = fileDiagnostics.map((d, i) => {
+                const headers = Array.isArray(d.headers) ? d.headers : [];
+                const amountOptions = [`<option value="">Select column</option>`]
+                    .concat(headers.map(h => `<option value="${escapeAttr(h)}"${d.mapping.amountCol === h ? ' selected' : ''}>${escapeHtml(h)}</option>`))
+                    .join('');
+                const dedOptions = [`<option value="">None</option>`]
+                    .concat(headers.map(h => `<option value="${escapeAttr(h)}"${d.mapping.dedCol === h ? ' selected' : ''}>${escapeHtml(h)}</option>`))
+                    .join('');
+                return `
+                    <div class="diag-item" style="margin-bottom:12px;padding:8px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04)">
+                        <div><strong>${escapeHtml(d.file)}</strong> — provider: ${escapeHtml(d.provider)} — rows: ${formatNumber(d.rows)} — source total: ${formatNumber(d.fileTotalSource || d.fileTotal)} — converted total (USD): ${formatCurrency(d.fileTotalConverted || 0)}</div>
+                        <div class="small" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+                            <span>Gross column</span>
+                            <select id="mappingAmount-${i}" class="small-input">${amountOptions}</select>
+                            <span>Deduction column</span>
+                            <select id="mappingDed-${i}" class="small-input">${dedOptions}</select>
+                            <button onclick="saveMapping(${i})" class="muted">Apply mapping</button>
+                            <button onclick="reparseFile(${i})" class="muted">Auto-detect</button>
+                        </div>
+                        <div class="small" style="margin-top:6px">Current mapping → ${escapeHtml(JSON.stringify(d.mapping))}</div>
+                    </div>`;
             }).join('');
             el.innerHTML = `<div style="margin-bottom:8px">Loaded ${fileDiagnostics.length} file(s) — ${rawDataRows.length} rows total.</div><div style="max-height:220px;overflow:auto;padding:8px;border-radius:8px;background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02)">${html}</div><div style="margin-top:8px"><strong>Rate info:</strong> ${rateInfo}</div>`;
         }
 
-        function editMapping(idx) {
+        function saveMapping(idx) {
             const diag = fileDiagnostics[idx];
-            if (!diag) return alert('No mapping');
-            const file = diag.file;
-            const newAmount = prompt(`Exact column header to use as GROSS (IMPORTE) for file "${file}" (leave blank to keep current):`, diag.mapping.amountCol || '');
-            if (newAmount === null) return;
-            const newDed = prompt(`Exact column header to use as DEDUCTION (DTO. ADMINISTRACION) for file "${file}" (leave blank to keep current):`, diag.mapping.dedCol || '');
-            if (newDed === null) return;
-            const rows = rawDataRows.filter(r => r.__source_file === file);
+            if (!diag) return alert('No mapping found for this file.');
+            const amountSelect = document.getElementById(`mappingAmount-${idx}`);
+            const dedSelect = document.getElementById(`mappingDed-${idx}`);
+            if (!amountSelect) return alert('Missing gross column selector.');
+            const amountCol = amountSelect.value;
+            const dedCol = dedSelect ? dedSelect.value : '';
+            if (!amountCol) {
+                alert('Please choose a gross column before applying.');
+                return;
+            }
+            const rows = rawDataRows.filter(r => r.__source_file === diag.file);
+            if (!rows.length) {
+                alert('No rows available for this file.');
+                return;
+            }
             rows.forEach(r => {
-                const gross = newAmount ? parseAmountSmart(r[newAmount]) : (r.__parsed_amount_original || NaN);
-                const ded = newDed ? parseAmountSmart(r[newDed]) : 0;
-                r.__parsed_amount_original = Number.isFinite(gross) ? (Number.isFinite(ded) ? gross - ded : gross) : NaN;
+                const gross = parseAmountSmart(r[amountCol]);
+                const ded = dedCol ? parseAmountSmart(r[dedCol]) : 0;
+                const net = Number.isFinite(gross) ? (Number.isFinite(ded) ? gross - ded : gross) : NaN;
+                r.__parsed_amount_original = Number.isFinite(net) ? net : NaN;
+                r.__mapping = Object.assign({}, r.__mapping, {
+                    amountCol,
+                    dedCol: dedCol || null
+                });
             });
-            diag.mapping.amountCol = newAmount || diag.mapping.amountCol;
-            diag.mapping.dedCol = newDed || diag.mapping.dedCol;
+            diag.mapping.amountCol = amountCol;
+            diag.mapping.dedCol = dedCol || null;
             normalized = normalizeDataFromCsv(rawDataRows);
             convertCurrenciesToUSD().then(() => {
                 renderLandingKpis();
@@ -1437,11 +1470,15 @@
                 r.__parsed_amount_original = Number.isFinite(gross) ? (Number.isFinite(ded) ? gross - ded : gross) : NaN;
                 r.__mapping = {
                     amountCol,
-                    dedCol
+                    dedCol,
+                    titleCol: r.__mapping ? r.__mapping.titleCol : diag.mapping.titleCol,
+                    periodCol: r.__mapping ? r.__mapping.periodCol : diag.mapping.periodCol,
+                    provider: r.__mapping ? r.__mapping.provider : diag.mapping.provider
                 };
             });
             diag.mapping.amountCol = amountCol;
             diag.mapping.dedCol = dedCol;
+            diag.headers = headers;
             normalized = normalizeDataFromCsv(rawDataRows);
             convertCurrenciesToUSD().then(() => {
                 renderLandingKpis();
@@ -1460,6 +1497,19 @@
 
         function formatNumber(v) {
             return Number.isFinite(v) ? v.toLocaleString() : '—';
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function escapeAttr(value) {
+            return escapeHtml(value);
         }
 
         function populateRevQuarter() {
