@@ -456,28 +456,63 @@
         }
 
         function detectProvider(headers) {
-            const nh = headers.map(h => h.trim().toLowerCase());
-            if (nh.includes(SGAE_HEADERS.GROSS.toLowerCase()) && nh.includes(SGAE_HEADERS.PERIOD.toLowerCase())) return 'SGAE';
-            if (nh.includes('file type')) return 'ASCAP (Int)';
-            if (nh.some(h => h.includes('dollar') || h.includes('usd'))) return 'ASCAP (Dom)';
-            return 'Other';
+            const normalized = headers.map(h => h.trim().toLowerCase());
+            const compact = headers.map(h => h.replace(/\s+/g, '').trim().toLowerCase());
+            const sgaeGross = SGAE_HEADERS.GROSS.toLowerCase();
+            const sgaePeriod = SGAE_HEADERS.PERIOD.toLowerCase();
+            const hasSgaeSignature = normalized.includes(sgaeGross) && normalized.includes(sgaePeriod);
+            let fileTypeIdx = normalized.indexOf('file type');
+            if (fileTypeIdx === -1) fileTypeIdx = compact.indexOf('filetype');
+            const fileTypeHeader = fileTypeIdx !== -1 ? headers[fileTypeIdx] : null;
+            if (hasSgaeSignature) {
+                return {
+                    provider: 'SGAE',
+                    fileTypeHeader
+                };
+            }
+            if (fileTypeHeader) {
+                return {
+                    provider: 'ASCAP (Int)',
+                    fileTypeHeader
+                };
+            }
+            const ascapMarkers = ['ascap', 'royalty', 'distribution', 'licensee', 'territory', 'ipi', 'member', 'work title', 'writer', 'us$', 'usd', 'net amount', 'gross amount'];
+            let markerHits = 0;
+            for (const h of normalized) {
+                if (ascapMarkers.some(m => h.includes(m))) {
+                    markerHits += 1;
+                }
+            }
+            const looksAscDom = markerHits >= 2;
+            return {
+                provider: looksAscDom ? 'ASCAP (Dom)' : 'Other',
+                fileTypeHeader
+            };
+        }
+
+        function rowHasFileType(row, fileTypeHeader) {
+            if (!fileTypeHeader) return false;
+            if (row.hasOwnProperty(fileTypeHeader)) return true;
+            const normalized = fileTypeHeader.replace(/\s+/g, '').trim().toLowerCase();
+            return Object.keys(row).some(key => key && key.replace(/\s+/g, '').trim().toLowerCase() === normalized);
         }
 
         function resolveProviderLabel(providerGuess, row, amountCol, fileTypeHeader) {
             const normalizedGuess = (providerGuess || '').toString().trim();
+            const hasFileTypeColumn = rowHasFileType(row, fileTypeHeader);
             if (normalizedGuess === 'SGAE' || normalizedGuess === 'ASCAP (Dom)' || normalizedGuess === 'ASCAP (Int)') return normalizedGuess;
             if (normalizedGuess === 'ASCAP') {
-                return fileTypeHeader && row.hasOwnProperty(fileTypeHeader) ? 'ASCAP (Int)' : 'ASCAP (Dom)';
+                return hasFileTypeColumn ? 'ASCAP (Int)' : 'ASCAP (Dom)';
             }
-            if (fileTypeHeader && row.hasOwnProperty(fileTypeHeader)) return 'ASCAP (Int)';
+            if (hasFileTypeColumn) return 'ASCAP (Int)';
             const amountSample = amountCol ? String(row[amountCol] || '').toLowerCase() : '';
             if (normalizedGuess === 'Other') {
                 if (amountSample.includes('€') || amountSample.includes('eur')) return 'SGAE';
-                return 'ASCAP (Dom)';
+                return hasFileTypeColumn ? 'ASCAP (Int)' : 'ASCAP (Dom)';
             }
             if (!normalizedGuess || normalizedGuess === 'Unknown') {
                 if (amountSample.includes('€') || amountSample.includes('eur')) return 'SGAE';
-                return fileTypeHeader && row.hasOwnProperty(fileTypeHeader) ? 'ASCAP (Int)' : 'ASCAP (Dom)';
+                return hasFileTypeColumn ? 'ASCAP (Int)' : 'ASCAP (Dom)';
             }
             return normalizedGuess;
         }
@@ -504,8 +539,9 @@
                     const rows = await parseCsvFile(f);
                     rows.forEach(r => r.__source_file = f.name);
                     const headers = Object.keys(rows[0] || {});
-                    const provider = detectProvider(headers);
-                    const fileTypeHeader = headers.find(h => h.trim().toLowerCase() === 'file type');
+                    const detection = detectProvider(headers);
+                    const provider = detection.provider;
+                    const fileTypeHeader = detection.fileTypeHeader;
                     let amountCol = null,
                         dedCol = null,
                         titleCol = null,
