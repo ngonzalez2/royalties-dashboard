@@ -1704,32 +1704,68 @@
             }
         }
 
-        function normalizeDropboxUrl(url) {
-            if (!url) return '';
+        function buildDropboxFetchUrls(url) {
+            if (!url) return [];
+            const trimmed = url.trim();
+            const attempts = [];
+            const addUnique = candidate => {
+                if (!candidate) return;
+                if (!attempts.includes(candidate)) attempts.push(candidate);
+            };
             try {
-                const trimmed = url.trim();
                 const parsed = new URL(trimmed);
+                if (!parsed.protocol || parsed.protocol === 'http:') {
+                    parsed.protocol = 'https:';
+                }
                 const hostname = parsed.hostname.toLowerCase();
                 const isDropbox = hostname.includes('dropbox.com');
                 const isDropboxUserContent = hostname.includes('dropboxusercontent.com');
                 if (!isDropbox && !isDropboxUserContent) {
-                    return trimmed;
+                    addUnique(parsed.toString());
+                    return attempts;
                 }
 
-                if (isDropbox) {
-                    // Dropbox share links need to point at the usercontent domain to be CORS friendly.
-                    parsed.hostname = 'dl.dropboxusercontent.com';
-                }
+                const ensureDirectDownloadParams = candidateUrl => {
+                    if (candidateUrl.searchParams.has('raw')) {
+                        candidateUrl.searchParams.delete('raw');
+                    }
+                    candidateUrl.searchParams.set('dl', '1');
+                };
 
-                if (parsed.searchParams.has('raw')) {
-                    parsed.searchParams.delete('raw');
-                }
-                parsed.searchParams.set('dl', '1');
+                const addSclVariants = candidateUrl => {
+                    const baseString = candidateUrl.toString();
+                    addUnique(baseString);
+                    if (/^\/scl\//i.test(candidateUrl.pathname) && !/\/download$/i.test(candidateUrl.pathname)) {
+                        const downloadUrl = new URL(baseString);
+                        downloadUrl.pathname = downloadUrl.pathname.replace(/\/+$/, '') + '/download';
+                        addUnique(downloadUrl.toString());
+                    }
+                };
 
-                return parsed.toString();
+                if (isDropboxUserContent) {
+                    ensureDirectDownloadParams(parsed);
+                    addSclVariants(parsed);
+                    if (!hostname.includes('dl.dropboxusercontent.com')) {
+                        const dlClone = new URL(parsed.toString());
+                        dlClone.hostname = 'dl.dropboxusercontent.com';
+                        addSclVariants(dlClone);
+                    }
+                } else {
+                    const dlUrl = new URL(parsed.toString());
+                    dlUrl.hostname = 'dl.dropboxusercontent.com';
+                    ensureDirectDownloadParams(dlUrl);
+                    addSclVariants(dlUrl);
+
+                    const wwwUrl = new URL(parsed.toString());
+                    ensureDirectDownloadParams(wwwUrl);
+                    addSclVariants(wwwUrl);
+                }
             } catch (err) {
-                return url.trim();
+                // fall back to the trimmed string if URL parsing fails
+                addUnique(trimmed);
             }
+            if (!attempts.length) addUnique(trimmed);
+            return attempts;
         }
 
         function extractFilenameFromDisposition(header) {
@@ -1788,16 +1824,35 @@
             try {
                 const files = [];
                 for (const url of urls) {
-                    const normalizedUrl = normalizeDropboxUrl(url);
-                    const response = await fetch(normalizedUrl);
-                    if (!response.ok) {
-                        throw new Error(`Download failed (${response.status}) for ${url}`);
+                    const candidates = buildDropboxFetchUrls(url);
+                    if (!candidates.length) {
+                        throw new Error(`Could not understand Dropbox link: ${url}`);
+                    }
+                    let response = null;
+                    let resolvedUrl = '';
+                    let lastError = null;
+                    for (const candidate of candidates) {
+                        try {
+                            response = await fetch(candidate);
+                            if (response && response.ok) {
+                                resolvedUrl = candidate;
+                                break;
+                            }
+                            lastError = new Error(`Download failed (${response ? response.status : 'unknown'}) for ${candidate}`);
+                        } catch (fetchErr) {
+                            lastError = fetchErr;
+                            response = null;
+                        }
+                    }
+                    if (!response || !response.ok) {
+                        throw lastError || new Error(`Download failed for ${url}`);
                     }
                     const blob = await response.blob();
                     if (!blob || !blob.size) {
                         throw new Error(`No data returned for ${url}`);
                     }
-                    let name = inferDropboxFilename(url, response) || 'dropbox.csv';
+                    const sourceForName = resolvedUrl || url;
+                    let name = inferDropboxFilename(sourceForName, response) || 'dropbox.csv';
                     const mime = (blob.type || '').toLowerCase();
                     const looksCsv = mime.includes('csv') || mime.includes('text') || mime.includes('excel');
                     if (!name.toLowerCase().endsWith('.csv') && looksCsv) {
