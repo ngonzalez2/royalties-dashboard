@@ -435,6 +435,224 @@
             border: 1px solid rgba(146, 192, 255, 0.2);
         }
 
+        .work-income-controls {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+        }
+
+        .work-control-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .work-shortcuts {
+            display: inline-flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .muted.ghost {
+            background: rgba(8, 16, 32, 0.35);
+            border-color: rgba(146, 192, 255, 0.18);
+        }
+
+        .muted.ghost:hover,
+        .muted.ghost:focus {
+            background: rgba(124, 241, 180, 0.14);
+            border-color: rgba(124, 241, 180, 0.35);
+            color: var(--text);
+        }
+
+        .work-multi-select {
+            position: relative;
+            min-width: 260px;
+            flex: 1 1 260px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 6px 8px;
+            background: rgba(8, 16, 32, 0.6);
+            border: 1px solid rgba(140, 170, 255, 0.3);
+            border-radius: 10px;
+            cursor: text;
+        }
+
+        .work-multi-select:focus-within {
+            border-color: rgba(124, 241, 180, 0.6);
+            box-shadow: 0 0 0 3px rgba(124, 241, 180, 0.18);
+        }
+
+        .work-chip-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .work-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(124, 241, 180, 0.2);
+            color: var(--text);
+            font-size: 0.85rem;
+            line-height: 1;
+        }
+
+        .work-chip .color-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-flex;
+            background: rgba(124, 241, 180, 0.85);
+            box-shadow: 0 0 0 2px rgba(5, 12, 28, 0.55);
+        }
+
+        .work-chip button {
+            border: none;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            padding: 0 2px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            line-height: 1;
+        }
+
+        .work-chip button:hover,
+        .work-chip button:focus {
+            color: #ffb3b3;
+        }
+
+        .work-chip.placeholder {
+            background: transparent;
+            color: var(--muted);
+            padding: 0;
+        }
+
+        .work-multi-input {
+            flex: 1 1 120px;
+            min-width: 120px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-size: 0.9rem;
+            padding: 4px 0;
+        }
+
+        .work-multi-input::placeholder {
+            color: rgba(209, 220, 243, 0.45);
+        }
+
+        .work-multi-input:focus {
+            outline: none;
+        }
+
+        .work-options {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 6px);
+            max-height: 260px;
+            overflow-y: auto;
+            background: rgba(10, 20, 38, 0.96);
+            border: 1px solid rgba(124, 241, 180, 0.28);
+            border-radius: 12px;
+            box-shadow: 0 22px 40px rgba(5, 10, 25, 0.55);
+            padding: 6px;
+            display: none;
+            z-index: 40;
+        }
+
+        .work-options.is-open {
+            display: block;
+        }
+
+        .work-option {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            text-align: left;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .work-option:hover,
+        .work-option:focus {
+            background: rgba(124, 241, 180, 0.18);
+            outline: none;
+        }
+
+        .work-option.is-selected {
+            background: rgba(124, 241, 180, 0.28);
+            color: var(--text);
+        }
+
+        .work-options-empty {
+            padding: 8px 10px;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .work-mode-toggle {
+            display: inline-flex;
+            gap: 6px;
+            padding: 4px;
+            border-radius: 12px;
+            background: rgba(8, 16, 32, 0.6);
+            border: 1px solid rgba(140, 170, 255, 0.3);
+        }
+
+        .work-mode-btn {
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.18s ease-in-out;
+            font-family: inherit;
+        }
+
+        .work-mode-btn:hover,
+        .work-mode-btn:focus {
+            color: var(--text);
+            outline: none;
+        }
+
+        .work-mode-btn.is-active {
+            background: rgba(124, 241, 180, 0.24);
+            color: var(--text);
+            box-shadow: 0 12px 26px rgba(16, 48, 36, 0.35);
+        }
+
+        .work-cap-note {
+            margin: -4px 0 4px;
+            color: rgba(209, 220, 243, 0.75);
+            display: none;
+        }
+
+        .work-income-empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .work-income-empty button {
+            margin-top: 12px;
+        }
+
         input.small-input,
         select.small-input,
         .muted,
@@ -677,22 +895,32 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                 <div>
                     <h3 style="margin:0">Work income over time</h3>
-                    <div class="small">Select a work to see quarterly income with options for actual or cumulative totals.</div>
+                    <div class="small">Select one or many works to compare quarterly or cumulative royalties.</div>
                 </div>
-                <div class="chart-controls">
-                    <label class="inline small">Work:
-                        <select id="workIncomeSelect" class="small-input" style="min-width:200px"></select>
-                    </label>
-                    <label class="inline small">View:
-                        <select id="workIncomeMode" class="small-input">
-                            <option value="series">Time series</option>
-                            <option value="cumulative">Cumulative</option>
-                        </select>
-                    </label>
-                    <button id="downloadWorkIncome" class="muted">Download PNG</button>
-                    <button class="back-btn nav-btn ghost" data-target="landingView">Back</button>
+                <div class="chart-controls work-income-controls">
+                    <div class="work-control-row">
+                        <label class="inline small" for="workIncomeSearch">Works:</label>
+                        <div id="workIncomeMulti" class="work-multi-select">
+                            <div id="workIncomeChips" class="work-chip-container"></div>
+                            <input id="workIncomeSearch" class="work-multi-input" type="text" placeholder="Search works" autocomplete="off" />
+                            <div id="workIncomeOptions" class="work-options"></div>
+                        </div>
+                        <div class="work-shortcuts">
+                            <button id="workIncomeSelectTop" class="muted">Select top 5</button>
+                            <button id="workIncomeClear" class="muted ghost">Clear all</button>
+                        </div>
+                    </div>
+                    <div class="work-control-row">
+                        <div id="workIncomeModeToggle" class="work-mode-toggle">
+                            <button class="work-mode-btn is-active" data-mode="series">Time series</button>
+                            <button class="work-mode-btn" data-mode="cumulative">Cumulative</button>
+                        </div>
+                        <button id="downloadWorkIncome" class="muted">Download PNG</button>
+                        <button class="back-btn nav-btn ghost" data-target="landingView">Back</button>
+                    </div>
                 </div>
             </div>
+            <div id="workIncomeCapNote" class="small work-cap-note"></div>
             <div id="workIncomeChart" class="full"></div>
         </div>
 
@@ -825,34 +1053,91 @@
             showView(t);
         }));
 
-        const workIncomeSelectEl = document.getElementById('workIncomeSelect');
-        const workIncomeModeEl = document.getElementById('workIncomeMode');
         const workIncomeChartEl = document.getElementById('workIncomeChart');
         const downloadWorkIncomeBtn = document.getElementById('downloadWorkIncome');
-        let currentWorkIncomeWork = null;
+        const workIncomeChipsEl = document.getElementById('workIncomeChips');
+        const workIncomeSearchEl = document.getElementById('workIncomeSearch');
+        const workIncomeOptionsEl = document.getElementById('workIncomeOptions');
+        const workIncomeMultiEl = document.getElementById('workIncomeMulti');
+        const workIncomeTopBtn = document.getElementById('workIncomeSelectTop');
+        const workIncomeClearBtn = document.getElementById('workIncomeClear');
+        const workIncomeModeToggle = document.getElementById('workIncomeModeToggle');
+        const workIncomeCapNoteEl = document.getElementById('workIncomeCapNote');
+        const WORK_INCOME_TOP_N = 5;
+        const WORK_INCOME_NOTE_THRESHOLD = 12;
+        const WORK_COLOR_PALETTE = ['#7CF1B4', '#5ED1F6', '#FF9F7C', '#B28BFF', '#FFD05A', '#FF6F91', '#63F2C9', '#7BA7FF', '#9AFFA0', '#FFA8D8', '#9F7FFF', '#4DD3B3', '#F8E16C', '#6ED5FF', '#FFB27A'];
         const workIncomeCache = new Map();
         let workIncomeCacheDirty = true;
-
-        if (workIncomeModeEl) {
-            workIncomeModeEl.value = 'series';
-        }
+        let workIncomeMode = 'series';
+        let workIncomeEntries = [];
+        let workIncomeSelectionOrder = [];
+        const workIncomeSelectionSet = new Set();
+        let workIncomeFilter = '';
+        let workIncomeOptionsVisible = false;
 
         if (downloadWorkIncomeBtn) {
             downloadWorkIncomeBtn.disabled = true;
         }
 
-        if (workIncomeSelectEl) {
-            workIncomeSelectEl.addEventListener('change', () => {
-                currentWorkIncomeWork = workIncomeSelectEl.value;
-                renderWorkIncomeChart();
+        if (workIncomeTopBtn) {
+            workIncomeTopBtn.textContent = `Select top ${WORK_INCOME_TOP_N}`;
+            workIncomeTopBtn.addEventListener('click', () => {
+                applyTopWorksSelection(WORK_INCOME_TOP_N);
             });
         }
 
-        if (workIncomeModeEl) {
-            workIncomeModeEl.addEventListener('change', () => {
-                renderWorkIncomeChart();
+        if (workIncomeClearBtn) {
+            workIncomeClearBtn.addEventListener('click', () => {
+                clearWorkIncomeSelection();
             });
         }
+
+        if (workIncomeModeToggle) {
+            workIncomeModeToggle.querySelectorAll('button[data-mode]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.mode || 'series';
+                    if (mode === workIncomeMode) return;
+                    setWorkIncomeMode(mode);
+                });
+            });
+        }
+
+        if (workIncomeSearchEl) {
+            workIncomeSearchEl.addEventListener('input', () => {
+                workIncomeFilter = (workIncomeSearchEl.value || '').trim().toLowerCase();
+                updateWorkIncomeOptions();
+            });
+            workIncomeSearchEl.addEventListener('focus', () => {
+                workIncomeFilter = (workIncomeSearchEl.value || '').trim().toLowerCase();
+                showWorkIncomeOptions();
+            });
+            workIncomeSearchEl.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    hideWorkIncomeOptions();
+                    workIncomeSearchEl.blur();
+                } else if (event.key === 'Enter') {
+                    const firstOption = workIncomeOptionsEl ? workIncomeOptionsEl.querySelector('.work-option') : null;
+                    if (firstOption) {
+                        event.preventDefault();
+                        firstOption.click();
+                    }
+                }
+            });
+        }
+
+        if (workIncomeMultiEl) {
+            workIncomeMultiEl.addEventListener('click', (event) => {
+                if (event.target === workIncomeMultiEl) {
+                    workIncomeSearchEl && workIncomeSearchEl.focus();
+                }
+            });
+        }
+
+        document.addEventListener('click', (event) => {
+            if (!workIncomeMultiEl) return;
+            if (workIncomeMultiEl.contains(event.target)) return;
+            hideWorkIncomeOptions();
+        });
 
         // re-render on control change for immediate feedback
         if (tsChartTypeEl) {
@@ -957,8 +1242,7 @@
                 bottomOverviewEl.classList.toggle('hidden', id !== 'landingView');
             }
             if (id === 'workIncomeView') {
-                populateWorkIncomeSelect();
-                renderWorkIncomeChart();
+                refreshWorkIncomeControls();
             }
             if (normalized && normalized.length) {
                 if (id === 'tsView') renderTimeSeriesByProvider();
@@ -1325,7 +1609,7 @@
             markAllCachesDirty();
             await convertCurrenciesToUSD();
             renderLandingKpis();
-            populateWorkIncomeSelect();
+                refreshWorkIncomeControls();
             showView('landingView');
         }
 
@@ -1984,46 +2268,24 @@
             return null;
         }
 
-        function compareQuarterLabels(a, b) {
-            const aParts = parseQuarterParts(a);
-            const bParts = parseQuarterParts(b);
-            if (!aParts && !bParts) return 0;
-            if (!aParts) return 1;
-            if (!bParts) return -1;
-            if (aParts.year !== bParts.year) return aParts.year - bParts.year;
-            return aParts.quarter - bParts.quarter;
-        }
-
-        function advanceQuarterParts(parts) {
-            if (!parts) return;
-            if (parts.quarter === 4) {
-                parts.quarter = 1;
-                parts.year += 1;
-            } else {
-                parts.quarter += 1;
-            }
-        }
-
-        function isAfterQuarterParts(a, b) {
-            if (!a || !b) return false;
-            return a.year > b.year || (a.year === b.year && a.quarter > b.quarter);
-        }
-
         function ensureWorkIncomeCache() {
             if (!workIncomeCacheDirty) return;
             workIncomeCache.clear();
+            workIncomeEntries = [];
             workIncomeCacheDirty = false;
             if (!normalized || !normalized.length) return;
             const buckets = new Map();
             normalized.forEach(row => {
-                const title = row && row.work_title ? String(row.work_title).trim() : '';
+                const rawTitle = row && row.work_title != null ? String(row.work_title) : '';
+                const title = rawTitle.trim();
                 if (!title) return;
                 const key = canonicalizeWorkTitle(title);
                 if (!key) return;
                 if (!buckets.has(key)) {
                     buckets.set(key, {
                         labels: new Map(),
-                        quarters: new Map()
+                        quarters: new Map(),
+                        total: 0
                     });
                 }
                 const bucket = buckets.get(key);
@@ -2038,189 +2300,326 @@
                 }
                 const quarterEntry = bucket.quarters.get(quarterInfo.label);
                 quarterEntry.amount += row.amount || 0;
-                if (!quarterEntry.quarterDate || !(quarterEntry.quarterDate instanceof Date) || isNaN(quarterEntry.quarterDate)) {
+                if (!(quarterEntry.quarterDate instanceof Date) || isNaN(quarterEntry.quarterDate)) {
                     quarterEntry.quarterDate = quarterInfo.date;
                 }
+                bucket.total += row.amount || 0;
             });
             buckets.forEach((bucket, key) => {
                 const labelCandidates = Array.from(bucket.labels.entries());
-                let displayName = labelCandidates.length
+                const displayName = labelCandidates.length
                     ? labelCandidates.sort((a, b) => {
                         if (b[1] !== a[1]) return b[1] - a[1];
                         return a[0].localeCompare(b[0], undefined, { sensitivity: 'base' });
                     })[0][0]
                     : key;
-                const quarterKeys = Array.from(bucket.quarters.keys()).sort(compareQuarterLabels);
-                const series = [];
-                if (quarterKeys.length) {
-                    const firstParts = parseQuarterParts(quarterKeys[0]);
-                    const lastParts = parseQuarterParts(quarterKeys[quarterKeys.length - 1]);
-                    if (firstParts && lastParts) {
-                        const cursor = { ...firstParts };
-                        while (!isAfterQuarterParts(cursor, lastParts)) {
-                            const label = `${cursor.year}-Q${cursor.quarter}`;
-                            const entry = bucket.quarters.get(label);
-                            const date = (entry && entry.quarterDate instanceof Date && !isNaN(entry.quarterDate))
-                                ? entry.quarterDate
-                                : quarterLabelToDate(label);
-                            series.push({
-                                quarter: label,
-                                quarterDate: date instanceof Date && !isNaN(date) ? date : quarterLabelToDate(label),
-                                amount: entry ? entry.amount : 0
-                            });
-                            advanceQuarterParts(cursor);
-                        }
-                    }
-                }
+                const series = Array.from(bucket.quarters.entries()).map(([label, entry]) => {
+                    const date = entry && entry.quarterDate instanceof Date && !isNaN(entry.quarterDate)
+                        ? entry.quarterDate
+                        : quarterLabelToDate(label);
+                    return {
+                        quarter: label,
+                        quarterDate: date instanceof Date && !isNaN(date) ? date : quarterLabelToDate(label),
+                        amount: entry ? entry.amount : 0
+                    };
+                }).filter(point => point && point.quarterDate instanceof Date && !isNaN(point.quarterDate))
+                    .sort((a, b) => a.quarterDate - b.quarterDate);
+                const total = bucket.total || series.reduce((sum, point) => sum + (point.amount || 0), 0);
                 workIncomeCache.set(key, {
                     displayName,
-                    series
+                    series,
+                    total
                 });
             });
+            workIncomeEntries = Array.from(workIncomeCache.entries()).map(([key, value]) => ({
+                key,
+                displayName: value.displayName && value.displayName.trim().length ? value.displayName : key,
+                total: value.total || 0
+            })).sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
         }
 
-        function populateWorkIncomeSelect() {
-            if (!workIncomeSelectEl) return;
+        function getTopWorkKeys(count = WORK_INCOME_TOP_N) {
             ensureWorkIncomeCache();
-            const previous = currentWorkIncomeWork || workIncomeSelectEl.value || '';
-            workIncomeSelectEl.innerHTML = '';
-            const entries = Array.from(workIncomeCache.entries()).map(([key, value]) => ({
-                key,
-                displayName: value.displayName && value.displayName.trim().length ? value.displayName : key
-            })).sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
-            if (!entries.length) {
-                const opt = document.createElement('option');
-                opt.value = '';
-                opt.text = 'No works available';
-                workIncomeSelectEl.appendChild(opt);
-                workIncomeSelectEl.disabled = true;
-                currentWorkIncomeWork = null;
-                if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
+            if (!workIncomeCache.size) return [];
+            return Array.from(workIncomeCache.entries())
+                .map(([key, value]) => ({ key, total: value.total || 0 }))
+                .sort((a, b) => b.total - a.total)
+                .slice(0, Math.max(0, count))
+                .map(entry => entry.key);
+        }
+
+        function showWorkIncomeOptions() {
+            if (!workIncomeOptionsEl) return;
+            workIncomeOptionsVisible = true;
+            workIncomeOptionsEl.classList.add('is-open');
+            updateWorkIncomeOptions();
+        }
+
+        function hideWorkIncomeOptions() {
+            if (!workIncomeOptionsEl) return;
+            workIncomeOptionsVisible = false;
+            workIncomeOptionsEl.classList.remove('is-open');
+        }
+
+        function updateWorkIncomeOptions() {
+            if (!workIncomeOptionsEl) return;
+            if (!workIncomeEntries || !workIncomeEntries.length) {
+                workIncomeOptionsEl.innerHTML = '<div class="work-options-empty">No works loaded yet</div>';
                 return;
             }
-            workIncomeSelectEl.disabled = false;
-            entries.forEach(entry => {
-                const opt = document.createElement('option');
-                opt.value = entry.displayName;
-                opt.text = entry.displayName;
-                workIncomeSelectEl.appendChild(opt);
-            });
-            const previousKey = canonicalizeWorkTitle(previous);
-            let nextSelection = '';
-            if (previousKey && workIncomeCache.has(previousKey)) {
-                nextSelection = workIncomeCache.get(previousKey).displayName;
-            } else {
-                nextSelection = entries[0].displayName;
+            const term = (workIncomeFilter || '').toLowerCase();
+            const matches = workIncomeEntries.filter(entry => entry.displayName.toLowerCase().includes(term));
+            workIncomeOptionsEl.innerHTML = '';
+            const subset = matches.slice(0, 60);
+            if (!subset.length) {
+                const empty = document.createElement('div');
+                empty.className = 'work-options-empty';
+                empty.textContent = term ? 'No matches' : 'No works loaded yet';
+                workIncomeOptionsEl.appendChild(empty);
+                return;
             }
-            currentWorkIncomeWork = nextSelection;
-            workIncomeSelectEl.value = nextSelection;
+            subset.forEach(entry => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'work-option';
+                if (workIncomeSelectionSet.has(entry.key)) btn.classList.add('is-selected');
+                btn.textContent = entry.displayName;
+                btn.addEventListener('click', () => {
+                    workIncomeFilter = '';
+                    if (workIncomeSearchEl) workIncomeSearchEl.value = '';
+                    toggleWorkIncomeSelection(entry.key);
+                });
+                workIncomeOptionsEl.appendChild(btn);
+            });
         }
 
-        function buildWorkIncomeSeries(workTitle) {
+        function updateWorkIncomeChips() {
+            if (!workIncomeChipsEl) return;
+            workIncomeChipsEl.innerHTML = '';
+            if (!workIncomeSelectionOrder.length) {
+                const placeholder = document.createElement('span');
+                placeholder.className = 'work-chip placeholder';
+                placeholder.textContent = 'No works selected';
+                workIncomeChipsEl.appendChild(placeholder);
+                return;
+            }
+            workIncomeSelectionOrder.forEach(key => {
+                const info = workIncomeCache.get(key);
+                if (!info) return;
+                const chip = document.createElement('span');
+                chip.className = 'work-chip';
+                const colorDot = document.createElement('span');
+                colorDot.className = 'color-dot';
+                colorDot.style.background = colorForWorkKey(key);
+                const label = document.createElement('span');
+                label.textContent = info.displayName;
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.setAttribute('aria-label', `Remove ${info.displayName}`);
+                removeBtn.textContent = '×';
+                removeBtn.addEventListener('click', () => removeWorkIncomeSelection(key));
+                chip.appendChild(colorDot);
+                chip.appendChild(label);
+                chip.appendChild(removeBtn);
+                workIncomeChipsEl.appendChild(chip);
+            });
+        }
+
+        function updateWorkIncomeCapNote() {
+            if (!workIncomeCapNoteEl) return;
+            const count = workIncomeSelectionOrder.length;
+            if (count > WORK_INCOME_NOTE_THRESHOLD) {
+                workIncomeCapNoteEl.textContent = `Showing ${count} works — consider narrowing selection for readability.`;
+                workIncomeCapNoteEl.style.display = 'block';
+            } else {
+                workIncomeCapNoteEl.textContent = '';
+                workIncomeCapNoteEl.style.display = 'none';
+            }
+        }
+
+        function setWorkIncomeSelection(order, { triggerRender = true } = {}) {
+            const unique = [];
+            const seen = new Set();
+            order.forEach(key => {
+                if (!workIncomeCache.has(key)) return;
+                if (seen.has(key)) return;
+                seen.add(key);
+                unique.push(key);
+            });
+            workIncomeSelectionOrder = unique;
+            workIncomeSelectionSet.clear();
+            unique.forEach(key => workIncomeSelectionSet.add(key));
+            updateWorkIncomeChips();
+            updateWorkIncomeOptions();
+            updateWorkIncomeCapNote();
+            if (workIncomeClearBtn) workIncomeClearBtn.disabled = workIncomeSelectionOrder.length === 0;
+            if (triggerRender) renderWorkIncomeChart();
+        }
+
+        function toggleWorkIncomeSelection(key) {
+            if (!workIncomeCache.has(key)) return;
+            let next;
+            if (workIncomeSelectionSet.has(key)) {
+                next = workIncomeSelectionOrder.filter(k => k !== key);
+            } else {
+                next = [...workIncomeSelectionOrder, key];
+            }
+            setWorkIncomeSelection(next);
+            if (workIncomeSearchEl) workIncomeSearchEl.focus();
+        }
+
+        function removeWorkIncomeSelection(key) {
+            if (!workIncomeSelectionSet.has(key)) return;
+            setWorkIncomeSelection(workIncomeSelectionOrder.filter(k => k !== key));
+        }
+
+        function applyTopWorksSelection(count = WORK_INCOME_TOP_N, options = {}) {
+            const keys = getTopWorkKeys(count);
+            setWorkIncomeSelection(keys, options);
+            if (workIncomeSearchEl) workIncomeSearchEl.value = '';
+            workIncomeFilter = '';
+        }
+
+        function clearWorkIncomeSelection(options = {}) {
+            setWorkIncomeSelection([], options);
+            if (workIncomeSearchEl) workIncomeSearchEl.value = '';
+            workIncomeFilter = '';
+        }
+
+        function setWorkIncomeMode(mode) {
+            workIncomeMode = mode === 'cumulative' ? 'cumulative' : 'series';
+            if (workIncomeModeToggle) {
+                workIncomeModeToggle.querySelectorAll('button[data-mode]').forEach(btn => {
+                    const isActive = (btn.dataset.mode || 'series') === workIncomeMode;
+                    btn.classList.toggle('is-active', isActive);
+                });
+            }
+            renderWorkIncomeChart();
+        }
+
+        function refreshWorkIncomeControls() {
             ensureWorkIncomeCache();
-            if (!workTitle || !normalized || !normalized.length) {
-                return {
-                    series: [],
-                    displayName: workTitle || ''
-                };
+            if (workIncomeTopBtn) {
+                workIncomeTopBtn.disabled = !workIncomeEntries.length;
             }
-            const targetKey = canonicalizeWorkTitle(workTitle);
-            if (!targetKey) {
-                return {
-                    series: [],
-                    displayName: workTitle || ''
-                };
+            let nextSelection = workIncomeSelectionOrder.filter(key => workIncomeCache.has(key));
+            if (!nextSelection.length && workIncomeEntries.length) {
+                nextSelection = getTopWorkKeys(WORK_INCOME_TOP_N);
             }
-            const cached = workIncomeCache.get(targetKey);
-            if (!cached) {
-                return {
-                    series: [],
-                    displayName: workTitle || ''
-                };
+            if (!workIncomeEntries.length) {
+                workIncomeFilter = '';
+                nextSelection = [];
+                hideWorkIncomeOptions();
             }
-            return {
-                series: cached.series,
-                displayName: cached.displayName
-            };
+            setWorkIncomeSelection(nextSelection, { triggerRender: false });
+            if (!workIncomeEntries.length && workIncomeOptionsEl) {
+                workIncomeOptionsEl.innerHTML = '<div class="work-options-empty">No works loaded yet</div>';
+            } else if (workIncomeOptionsVisible) {
+                updateWorkIncomeOptions();
+            }
+            if (!workIncomeFilter && workIncomeSearchEl) {
+                workIncomeSearchEl.value = '';
+            }
+            renderWorkIncomeChart();
+        }
+
+        function colorForWorkKey(key) {
+            if (!key) return WORK_COLOR_PALETTE[0];
+            let hash = 0;
+            for (let i = 0; i < key.length; i++) {
+                hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+            }
+            return WORK_COLOR_PALETTE[hash % WORK_COLOR_PALETTE.length];
         }
 
         function renderWorkIncomeChart() {
             if (!workIncomeChartEl) return;
-            if (!normalized || normalized.length === 0) {
+            if (!normalized || !normalized.length) {
                 if (typeof Plotly !== 'undefined') Plotly.purge(workIncomeChartEl);
                 workIncomeChartEl.innerHTML = '<div class="small">Upload statements to explore work income.</div>';
                 if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
                 return;
             }
-            if (workIncomeSelectEl && workIncomeSelectEl.disabled) {
+            ensureWorkIncomeCache();
+            if (!workIncomeEntries.length) {
+                if (typeof Plotly !== 'undefined') Plotly.purge(workIncomeChartEl);
                 workIncomeChartEl.innerHTML = '<div class="small">No works available.</div>';
                 if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
                 return;
             }
-            const selectedWork = workIncomeSelectEl ? workIncomeSelectEl.value : currentWorkIncomeWork;
-            if (!selectedWork) {
+            if (!workIncomeSelectionOrder.length) {
                 if (typeof Plotly !== 'undefined') Plotly.purge(workIncomeChartEl);
-                workIncomeChartEl.innerHTML = '<div class="small">Select a work to view its performance.</div>';
+                const ctaLabel = `Select top ${WORK_INCOME_TOP_N}`;
+                workIncomeChartEl.innerHTML = `<div class="work-income-empty small">No works selected.<br><button id="workIncomeEmptyCta" class="muted">${ctaLabel}</button></div>`;
+                const cta = document.getElementById('workIncomeEmptyCta');
+                if (cta) {
+                    cta.addEventListener('click', () => applyTopWorksSelection(WORK_INCOME_TOP_N));
+                }
                 if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
                 return;
             }
-            currentWorkIncomeWork = selectedWork;
-            const { series, displayName } = buildWorkIncomeSeries(selectedWork);
-            const resolvedName = displayName || selectedWork;
-            currentWorkIncomeWork = resolvedName;
-            if (workIncomeSelectEl && workIncomeSelectEl.value !== resolvedName) {
-                workIncomeSelectEl.value = resolvedName;
-            }
-            const sanitizedSeries = (series || []).map(point => {
-                const date = (point && point.quarterDate instanceof Date && !isNaN(point.quarterDate))
-                    ? point.quarterDate
-                    : quarterLabelToDate(point ? point.quarter : null);
-                if (!(date instanceof Date) || isNaN(date)) return null;
-                return {
-                    quarter: point.quarter,
-                    quarterDate: date,
-                    amount: point.amount || 0
-                };
-            }).filter(Boolean);
-            if (!sanitizedSeries.length) {
-                if (typeof Plotly !== 'undefined') Plotly.purge(workIncomeChartEl);
-                workIncomeChartEl.innerHTML = `<div class="small">No quarterly data found for <strong>${escapeHtml(resolvedName)}</strong>.</div>`;
-                if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
-                return;
-            }
-            const mode = workIncomeModeEl ? workIncomeModeEl.value : 'series';
-            const x = sanitizedSeries.map(point => point.quarterDate);
-            const baseY = sanitizedSeries.map(point => point.amount || 0);
-            let y = baseY;
-            if (mode === 'cumulative') {
-                let sum = 0;
-                y = baseY.map(val => {
-                    sum += val;
-                    return sum;
-                });
-            }
-            const yLabel = mode === 'cumulative' ? 'Cumulative income (USD)' : 'Income (USD)';
-            const titleDetail = mode === 'cumulative' ? 'Cumulative income' : 'Quarterly income';
-            const trace = {
-                x,
-                y,
-                customdata: sanitizedSeries.map(point => point.quarter),
-                type: 'scatter',
-                mode: 'lines+markers',
-                line: {
-                    color: '#7CF1B4',
-                    width: 4
-                },
-                marker: {
-                    size: 8,
-                    color: '#7CF1B4',
+            const traces = [];
+            workIncomeSelectionOrder.forEach(key => {
+                const cached = workIncomeCache.get(key);
+                if (!cached || !Array.isArray(cached.series)) return;
+                const sanitized = cached.series.map(point => {
+                    const date = point && point.quarterDate instanceof Date && !isNaN(point.quarterDate)
+                        ? point.quarterDate
+                        : quarterLabelToDate(point ? point.quarter : null);
+                    if (!(date instanceof Date) || isNaN(date)) return null;
+                    return {
+                        quarter: point.quarter,
+                        quarterDate: date,
+                        amount: point.amount || 0
+                    };
+                }).filter(Boolean);
+                if (!sanitized.length) return;
+                const x = sanitized.map(p => p.quarterDate);
+                const baseY = sanitized.map(p => p.amount || 0);
+                let y = baseY;
+                if (workIncomeMode === 'cumulative') {
+                    let sum = 0;
+                    y = baseY.map(val => {
+                        sum += val;
+                        return sum;
+                    });
+                }
+                const color = colorForWorkKey(key);
+                traces.push({
+                    x,
+                    y,
+                    customdata: sanitized.map(point => point.quarter),
+                    name: cached.displayName,
+                    type: 'scatter',
+                    mode: 'lines+markers',
                     line: {
-                        width: 1,
-                        color: '#0B1C24'
-                    }
-                },
-                hovertemplate: '<b>%{customdata}</b><br>$%{y:,.2f}<extra></extra>'
-            };
+                        color,
+                        width: 3
+                    },
+                    marker: {
+                        size: 7,
+                        color,
+                        line: {
+                            width: 1,
+                            color: '#0B1C24'
+                        }
+                    },
+                    connectgaps: false,
+                    hovertemplate: '<b>%{customdata}</b><br>$%{y:,.2f}<extra></extra>'
+                });
+            });
+            if (!traces.length) {
+                if (typeof Plotly !== 'undefined') Plotly.purge(workIncomeChartEl);
+                workIncomeChartEl.innerHTML = '<div class="small">No quarterly data available for the selected works.</div>';
+                if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
+                return;
+            }
+            const modeLabel = workIncomeMode === 'cumulative' ? 'Cumulative income' : 'Quarterly income';
+            const singleKey = workIncomeSelectionOrder[0];
+            const singleInfo = singleKey ? workIncomeCache.get(singleKey) : null;
+            const titleSuffix = workIncomeSelectionOrder.length === 1 && singleInfo
+                ? singleInfo.displayName
+                : `${workIncomeSelectionOrder.length} works`;
             const layout = {
                 template: 'plotly_dark',
                 paper_bgcolor: 'rgba(0,0,0,0)',
@@ -2230,7 +2629,7 @@
                     color: '#E0E6ED'
                 },
                 title: {
-                    text: `${resolvedName} — ${titleDetail}`,
+                    text: `${modeLabel} — ${titleSuffix}`,
                     font: {
                         size: 22,
                         color: '#7CF1B4'
@@ -2238,7 +2637,7 @@
                 },
                 margin: {
                     t: 60,
-                    b: 60,
+                    b: 90,
                     l: 70,
                     r: 30
                 },
@@ -2260,15 +2659,24 @@
                     gridcolor: 'rgba(255,255,255,0.05)',
                     color: '#AAB4C2',
                     title: {
-                        text: yLabel,
+                        text: workIncomeMode === 'cumulative' ? 'Cumulative income (USD)' : 'Income (USD)',
                         font: { color: '#AAB4C2' }
                     }
                 },
+                legend: {
+                    orientation: 'h',
+                    yanchor: 'bottom',
+                    y: -0.25,
+                    x: 0,
+                    font: {
+                        size: 12
+                    }
+                },
+                showlegend: true,
                 transition: {
                     duration: 400,
                     easing: 'cubic-in-out'
-                },
-                showlegend: false
+                }
             };
             const config = {
                 responsive: true,
@@ -2281,7 +2689,7 @@
             workIncomeChartEl.innerHTML = '';
             if (typeof Plotly !== 'undefined') {
                 Plotly.purge(workIncomeChartEl);
-                Plotly.newPlot(workIncomeChartEl, [trace], layout, config);
+                Plotly.newPlot(workIncomeChartEl, traces, layout, config);
             }
             if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = false;
         }
@@ -2551,7 +2959,7 @@
         // landing KPIs & diagnostics
         function refreshVisualsAfterConversion() {
             renderLandingKpis();
-            populateWorkIncomeSelect();
+            refreshWorkIncomeControls();
             if (isViewActive('tsView')) renderTimeSeriesByProvider();
             if (isViewActive('cumView')) renderCumulativeByProvider();
             if (isViewActive('workIncomeView')) renderWorkIncomeChart();
