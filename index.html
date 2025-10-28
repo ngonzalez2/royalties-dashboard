@@ -198,7 +198,56 @@
 
         .nav-btn.ghost:hover,
         .nav-btn.ghost:focus {
+            color: var(--text);
+            border-color: rgba(124, 241, 180, 0.55);
             background: rgba(124, 241, 180, 0.18);
+        }
+
+        .dropbox-loader {
+            margin-top: 18px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .dropbox-input {
+            flex: 1;
+            min-width: 240px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(146, 192, 255, 0.28);
+            background: rgba(10, 18, 34, 0.65);
+            color: var(--text);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border 0.18s ease-in-out, box-shadow 0.18s ease-in-out;
+            backdrop-filter: blur(10px);
+        }
+
+        .dropbox-input::placeholder {
+            color: rgba(209, 220, 243, 0.6);
+        }
+
+        .dropbox-input:focus {
+            border-color: rgba(124, 241, 180, 0.55);
+            box-shadow: 0 0 0 3px rgba(124, 241, 180, 0.18);
+        }
+
+        .dropbox-status {
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-top: 6px;
+            display: block;
+            min-height: 1.2em;
+        }
+
+        .dropbox-status.error {
+            color: #ff9d9d;
+        }
+
+        .dropbox-status.success {
+            color: var(--accent);
         }
 
         .muted {
@@ -843,8 +892,13 @@
             <div id="landingInsights" class="landing-grid">
                 <div class="landing-card full-span">
                     <h4>Load your royalty statements</h4>
-                    <div class="small">Upload SGAE, ASCAP, or Warner Chappell CSV files to unlock highlights, trends, and diagnostics.</div>
+                    <div class="small">Upload SGAE, ASCAP, or Warner Chappell CSV files or pull them directly from a public Dropbox link to unlock highlights, trends, and diagnostics.</div>
                     <div class="insight-note small">Once data is loaded you will see provider mix, latest quarter performance, and data health here.</div>
+                    <div class="dropbox-loader">
+                        <input id="dropboxUrlInput" class="dropbox-input" type="url" placeholder="Paste public Dropbox link to a CSV file" />
+                        <button id="dropboxFetchBtn" class="nav-btn ghost">Load from Dropbox</button>
+                    </div>
+                    <span id="dropboxStatus" class="dropbox-status"></span>
                 </div>
             </div>
         </div>
@@ -1002,6 +1056,24 @@
         const csvInput = document.getElementById('csvInput');
         csvInput.addEventListener('change', handleCsvFiles);
         document.getElementById('csvLabel').addEventListener('click', () => csvInput.click());
+        const dropboxUrlInput = document.getElementById('dropboxUrlInput');
+        const dropboxFetchBtn = document.getElementById('dropboxFetchBtn');
+        const dropboxStatusEl = document.getElementById('dropboxStatus');
+
+        if (dropboxFetchBtn) {
+            dropboxFetchBtn.addEventListener('click', () => {
+                handleDropboxFetch();
+            });
+        }
+
+        if (dropboxUrlInput) {
+            dropboxUrlInput.addEventListener('keydown', evt => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    handleDropboxFetch();
+                }
+            });
+        }
 
         let rawDataRows = [];
         let normalized = [];
@@ -1440,14 +1512,14 @@
             return 'ASCAP (Dom)';
         }
 
-        async function handleCsvFiles(e) {
-            const files = Array.from(e.target.files || []);
-            if (files.length === 0) return;
+        async function ingestCsvFiles(files) {
+            const queue = Array.from(files || []);
+            if (!queue.length) return;
             rawDataRows = [];
             fileDiagnostics = [];
             showDiagnostics();
             markAllCachesDirty();
-            for (const f of files) {
+            for (const f of queue) {
                 try {
                     const rows = await parseCsvFile(f);
                     if (!rows || rows.length === 0) continue;
@@ -1609,8 +1681,143 @@
             markAllCachesDirty();
             await convertCurrenciesToUSD();
             renderLandingKpis();
-                refreshWorkIncomeControls();
+            refreshWorkIncomeControls();
             showView('landingView');
+            return rawDataRows.length > 0;
+        }
+
+        async function handleCsvFiles(e) {
+            const files = Array.from(e.target.files || []);
+            if (!files.length) return;
+            await ingestCsvFiles(files);
+            e.target.value = '';
+        }
+
+        function updateDropboxStatus(message, tone = 'muted') {
+            if (!dropboxStatusEl) return;
+            dropboxStatusEl.textContent = message || '';
+            dropboxStatusEl.classList.remove('error', 'success');
+            if (tone === 'error') {
+                dropboxStatusEl.classList.add('error');
+            } else if (tone === 'success') {
+                dropboxStatusEl.classList.add('success');
+            }
+        }
+
+        function normalizeDropboxUrl(url) {
+            if (!url) return '';
+            try {
+                const parsed = new URL(url.trim());
+                if (parsed.hostname && parsed.hostname.includes('dropbox.com')) {
+                    if (parsed.searchParams.has('dl')) {
+                        parsed.searchParams.set('dl', '1');
+                    } else if (parsed.searchParams.has('raw')) {
+                        parsed.searchParams.set('raw', '1');
+                    } else {
+                        parsed.searchParams.set('dl', '1');
+                    }
+                    return parsed.toString();
+                }
+                return parsed.toString();
+            } catch (err) {
+                return url.trim();
+            }
+        }
+
+        function extractFilenameFromDisposition(header) {
+            if (!header) return null;
+            const utfMatch = header.match(/filename\*=UTF-8''([^;]+)/i);
+            if (utfMatch && utfMatch[1]) {
+                try {
+                    return decodeURIComponent(utfMatch[1].trim().replace(/"/g, ''));
+                } catch (err) {
+                    return utfMatch[1].trim().replace(/"/g, '');
+                }
+            }
+            const quotedMatch = header.match(/filename="?([^";]+)"?/i);
+            if (quotedMatch && quotedMatch[1]) {
+                return quotedMatch[1].trim();
+            }
+            return null;
+        }
+
+        function inferDropboxFilename(url, response) {
+            const disposition = response && response.headers ? response.headers.get('Content-Disposition') : null;
+            const fromDisposition = extractFilenameFromDisposition(disposition);
+            if (fromDisposition) return fromDisposition;
+            try {
+                const parsed = new URL(url);
+                const segments = parsed.pathname.split('/').filter(Boolean);
+                if (segments.length) {
+                    const last = decodeURIComponent(segments[segments.length - 1]);
+                    if (last) return last;
+                }
+            } catch (err) {
+                // ignore
+            }
+            return 'dropbox.csv';
+        }
+
+        async function handleDropboxFetch() {
+            if (!dropboxFetchBtn) return;
+            const raw = dropboxUrlInput ? dropboxUrlInput.value.trim() : '';
+            if (!raw) {
+                updateDropboxStatus('Paste a public Dropbox link first.', 'error');
+                if (dropboxUrlInput) dropboxUrlInput.focus();
+                return;
+            }
+            const urls = raw
+                .split(/[\s,;\n\r]+/)
+                .map(u => u.trim())
+                .filter(Boolean);
+            if (!urls.length) {
+                updateDropboxStatus('Paste a valid Dropbox link first.', 'error');
+                if (dropboxUrlInput) dropboxUrlInput.focus();
+                return;
+            }
+            dropboxFetchBtn.disabled = true;
+            updateDropboxStatus(`Fetching Dropbox file${urls.length > 1 ? 's' : ''}…`);
+            try {
+                const files = [];
+                for (const url of urls) {
+                    const normalizedUrl = normalizeDropboxUrl(url);
+                    const response = await fetch(normalizedUrl);
+                    if (!response.ok) {
+                        throw new Error(`Download failed (${response.status}) for ${url}`);
+                    }
+                    const blob = await response.blob();
+                    if (!blob || !blob.size) {
+                        throw new Error(`No data returned for ${url}`);
+                    }
+                    let name = inferDropboxFilename(url, response) || 'dropbox.csv';
+                    const mime = (blob.type || '').toLowerCase();
+                    const looksCsv = mime.includes('csv') || mime.includes('text') || mime.includes('excel');
+                    if (!name.toLowerCase().endsWith('.csv') && looksCsv) {
+                        name += '.csv';
+                    }
+                    if (!looksCsv && !name.toLowerCase().endsWith('.csv')) {
+                        throw new Error(`Expected a CSV download but received ${mime || 'a different format'} from ${url}`);
+                    }
+                    const file = new File([blob], name, { type: blob.type || 'text/csv' });
+                    files.push(file);
+                }
+                if (!files.length) {
+                    updateDropboxStatus('No downloadable CSV files were found at that link.', 'error');
+                    return;
+                }
+                if (dropboxUrlInput) dropboxUrlInput.value = '';
+                const loaded = await ingestCsvFiles(files);
+                if (loaded) {
+                    updateDropboxStatus(`Loaded ${files.length} Dropbox file${files.length > 1 ? 's' : ''}.`, 'success');
+                } else {
+                    updateDropboxStatus('No rows were parsed from the downloaded CSV file(s).', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                updateDropboxStatus(err && err.message ? `Failed to load Dropbox file(s): ${err.message}` : 'Failed to load Dropbox file(s).', 'error');
+            } finally {
+                dropboxFetchBtn.disabled = false;
+            }
         }
 
         // periodo parser and normalization
