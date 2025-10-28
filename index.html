@@ -892,11 +892,11 @@
             <div id="landingInsights" class="landing-grid">
                 <div class="landing-card full-span">
                     <h4>Load your royalty statements</h4>
-                    <div class="small">Upload SGAE, ASCAP, or Warner Chappell CSV files or pull them directly from a public Dropbox link to unlock highlights, trends, and diagnostics.</div>
+                    <div class="small">Upload SGAE, ASCAP, or Warner Chappell CSV files or pull them directly from public CSV links to unlock highlights, trends, and diagnostics.</div>
                     <div class="insight-note small">Once data is loaded you will see provider mix, latest quarter performance, and data health here.</div>
                     <div class="dropbox-loader">
-                        <input id="dropboxUrlInput" class="dropbox-input" type="url" placeholder="Paste public Dropbox link to a CSV file" />
-                        <button id="dropboxFetchBtn" class="nav-btn ghost">Load from Dropbox</button>
+                        <input id="dropboxUrlInput" class="dropbox-input" type="url" placeholder="Paste one or more public CSV links (Dropbox, Google Drive, Google Sheets CSV export, GitHub raw, GitLab raw, OneDrive, Box, S3…)" />
+                        <button id="dropboxFetchBtn" class="nav-btn ghost">Load from URL(s)</button>
                     </div>
                     <span id="dropboxStatus" class="dropbox-status"></span>
                 </div>
@@ -1704,68 +1704,118 @@
             }
         }
 
-        function buildDropboxFetchUrls(url) {
-            if (!url) return [];
+        function normalizePublicCsvUrl(url) {
+            if (!url) return '';
             const trimmed = url.trim();
-            const attempts = [];
-            const addUnique = candidate => {
-                if (!candidate) return;
-                if (!attempts.includes(candidate)) attempts.push(candidate);
-            };
-            try {
-                const parsed = new URL(trimmed);
-                if (!parsed.protocol || parsed.protocol === 'http:') {
-                    parsed.protocol = 'https:';
-                }
-                const hostname = parsed.hostname.toLowerCase();
-                const isDropbox = hostname.includes('dropbox.com');
-                const isDropboxUserContent = hostname.includes('dropboxusercontent.com');
-                if (!isDropbox && !isDropboxUserContent) {
-                    addUnique(parsed.toString());
-                    return attempts;
-                }
-
-                const ensureDirectDownloadParams = candidateUrl => {
-                    if (candidateUrl.searchParams.has('raw')) {
-                        candidateUrl.searchParams.delete('raw');
-                    }
-                    candidateUrl.searchParams.set('dl', '1');
-                };
-
-                const addSclVariants = candidateUrl => {
-                    const baseString = candidateUrl.toString();
-                    addUnique(baseString);
-                    if (/^\/scl\//i.test(candidateUrl.pathname) && !/\/download$/i.test(candidateUrl.pathname)) {
-                        const downloadUrl = new URL(baseString);
-                        downloadUrl.pathname = downloadUrl.pathname.replace(/\/+$/, '') + '/download';
-                        addUnique(downloadUrl.toString());
-                    }
-                };
-
-                if (isDropboxUserContent) {
-                    ensureDirectDownloadParams(parsed);
-                    addSclVariants(parsed);
-                    if (!hostname.includes('dl.dropboxusercontent.com')) {
-                        const dlClone = new URL(parsed.toString());
-                        dlClone.hostname = 'dl.dropboxusercontent.com';
-                        addSclVariants(dlClone);
-                    }
-                } else {
-                    const dlUrl = new URL(parsed.toString());
-                    dlUrl.hostname = 'dl.dropboxusercontent.com';
-                    ensureDirectDownloadParams(dlUrl);
-                    addSclVariants(dlUrl);
-
-                    const wwwUrl = new URL(parsed.toString());
-                    ensureDirectDownloadParams(wwwUrl);
-                    addSclVariants(wwwUrl);
-                }
-            } catch (err) {
-                // fall back to the trimmed string if URL parsing fails
-                addUnique(trimmed);
+            if (!trimmed) return '';
+            let working = trimmed;
+            if (!/^[a-zA-Z][\w+.-]*:\/\//.test(working)) {
+                working = `https://${working}`;
             }
-            if (!attempts.length) addUnique(trimmed);
-            return attempts;
+            let parsed;
+            try {
+                parsed = new URL(working);
+            } catch (err) {
+                return trimmed;
+            }
+            if (!parsed.protocol || parsed.protocol === 'http:') {
+                parsed.protocol = 'https:';
+            }
+            const hostname = parsed.hostname.toLowerCase();
+
+            if (hostname.includes('dropbox.com') || hostname.includes('dropboxusercontent.com')) {
+                parsed.hostname = 'dl.dropboxusercontent.com';
+                if (parsed.searchParams.has('raw')) {
+                    parsed.searchParams.delete('raw');
+                }
+                parsed.searchParams.set('dl', '1');
+                return parsed.toString();
+            }
+
+            if (hostname === 'drive.google.com') {
+                const fileIdMatch = parsed.pathname.match(/\/file\/d\/([^/]+)/);
+                const paramId = parsed.searchParams.get('id');
+                const fileId = (fileIdMatch && fileIdMatch[1]) || paramId;
+                if (fileId) {
+                    return `https://drive.google.com/uc?export=download&id=${fileId}`;
+                }
+            }
+
+            if (hostname === 'docs.google.com' && /\/spreadsheets\/d\//.test(parsed.pathname)) {
+                if (/\/export$/.test(parsed.pathname) && parsed.searchParams.get('format') === 'csv') {
+                    return parsed.toString();
+                }
+                const sheetMatch = parsed.pathname.match(/\/spreadsheets\/d\/([^/]+)/);
+                const sheetId = sheetMatch && sheetMatch[1];
+                if (sheetId) {
+                    const exportUrl = new URL(`https://docs.google.com/spreadsheets/d/${sheetId}/export`);
+                    exportUrl.searchParams.set('format', 'csv');
+                    const gid = parsed.searchParams.get('gid') || (parsed.hash ? new URLSearchParams(parsed.hash.replace(/^#/, '')).get('gid') : null);
+                    if (gid) {
+                        exportUrl.searchParams.set('gid', gid);
+                    }
+                    return exportUrl.toString();
+                }
+            }
+
+            if (hostname === 'github.com') {
+                const segments = parsed.pathname.split('/').filter(Boolean);
+                const blobIndex = segments.indexOf('blob');
+                if (blobIndex >= 2 && blobIndex + 1 < segments.length) {
+                    const user = segments[0];
+                    const repo = segments[1];
+                    const branch = segments[blobIndex + 1];
+                    const pathSegments = segments.slice(blobIndex + 2);
+                    if (user && repo && branch && pathSegments.length) {
+                        return `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${pathSegments.join('/')}`;
+                    }
+                }
+            }
+
+            if (hostname === 'raw.githubusercontent.com') {
+                return parsed.toString();
+            }
+
+            if (hostname.includes('gitlab.com')) {
+                const lowerPath = parsed.pathname.toLowerCase();
+                if (lowerPath.includes('/-/raw/') || lowerPath.includes('/raw/')) {
+                    return parsed.toString();
+                }
+                const segments = parsed.pathname.split('/').filter(Boolean);
+                const blobIndex = segments.indexOf('blob');
+                if (blobIndex !== -1) {
+                    segments[blobIndex] = 'raw';
+                    const newPath = `/${segments.join('/')}`;
+                    return `${parsed.origin}${newPath}${parsed.search}${parsed.hash}`;
+                }
+            }
+
+            if (hostname.includes('onedrive.live.com')) {
+                const resid = parsed.searchParams.get('resid') || parsed.searchParams.get('resId');
+                if (resid) {
+                    const downloadUrl = new URL('https://onedrive.live.com/download');
+                    downloadUrl.searchParams.set('resid', resid);
+                    const authkey = parsed.searchParams.get('authkey') || parsed.searchParams.get('authKey');
+                    if (authkey) {
+                        downloadUrl.searchParams.set('authkey', authkey);
+                    }
+                    return downloadUrl.toString();
+                }
+                return parsed.toString();
+            }
+
+            if (hostname.endsWith('1drv.ms')) {
+                return parsed.toString();
+            }
+
+            if (hostname.endsWith('box.com') || hostname.endsWith('boxcloud.com')) {
+                if (!parsed.searchParams.has('raw')) {
+                    parsed.searchParams.set('raw', '1');
+                }
+                return parsed.toString();
+            }
+
+            return parsed.toString();
         }
 
         function extractFilenameFromDisposition(header) {
@@ -1785,102 +1835,187 @@
             return null;
         }
 
-        function inferDropboxFilename(url, response) {
+        function ensureCsvExtension(name, treatAsCsv) {
+            if (!name) {
+                return treatAsCsv ? 'download.csv' : 'download';
+            }
+            if (treatAsCsv && !name.toLowerCase().endsWith('.csv')) {
+                return `${name}.csv`;
+            }
+            return name;
+        }
+
+        function inferDownloadFilename(url, response, treatAsCsv) {
             const disposition = response && response.headers ? response.headers.get('Content-Disposition') : null;
             const fromDisposition = extractFilenameFromDisposition(disposition);
-            if (fromDisposition) return fromDisposition;
+            if (fromDisposition) {
+                return ensureCsvExtension(fromDisposition, treatAsCsv);
+            }
             try {
                 const parsed = new URL(url);
                 const segments = parsed.pathname.split('/').filter(Boolean);
                 if (segments.length) {
                     const last = decodeURIComponent(segments[segments.length - 1]);
-                    if (last) return last;
+                    if (last) {
+                        return ensureCsvExtension(last, treatAsCsv);
+                    }
                 }
             } catch (err) {
-                // ignore
+                // ignore parsing issues
             }
-            return 'dropbox.csv';
+            return ensureCsvExtension('download.csv', true);
         }
 
-        async function handleDropboxFetch() {
+        function getUrlHostDisplay(url) {
+            try {
+                return new URL(url).host || url;
+            } catch (err) {
+                return url;
+            }
+        }
+
+        function isKnownCsvEndpoint(url) {
+            if (!url) return false;
+            try {
+                const parsed = new URL(url);
+                const host = parsed.hostname.toLowerCase();
+                if (
+                    host.includes('dropboxusercontent.com') ||
+                    host === 'drive.google.com' ||
+                    host === 'docs.google.com' ||
+                    host.endsWith('githubusercontent.com') ||
+                    host.includes('gitlab.com') ||
+                    host.includes('onedrive.live.com') ||
+                    host.endsWith('box.com') ||
+                    host.endsWith('boxcloud.com') ||
+                    host.endsWith('amazonaws.com') ||
+                    host.endsWith('storage.googleapis.com') ||
+                    host.endsWith('digitaloceanspaces.com') ||
+                    host.endsWith('blob.core.windows.net')
+                ) {
+                    return true;
+                }
+                if (parsed.searchParams.get('format') === 'csv' || parsed.searchParams.get('alt') === 'media') {
+                    return true;
+                }
+                const pathname = parsed.pathname.toLowerCase();
+                if (pathname.endsWith('.csv')) {
+                    return true;
+                }
+            } catch (err) {
+                if (typeof url === 'string' && url.toLowerCase().includes('.csv')) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        async function handleUrlFetch() {
             if (!dropboxFetchBtn) return;
             const raw = dropboxUrlInput ? dropboxUrlInput.value.trim() : '';
             if (!raw) {
-                updateDropboxStatus('Paste a public Dropbox link first.', 'error');
+                updateDropboxStatus('Paste one or more public CSV links first.', 'error');
                 if (dropboxUrlInput) dropboxUrlInput.focus();
                 return;
             }
-            const urls = raw
-                .split(/[\s,;\n\r]+/)
-                .map(u => u.trim())
-                .filter(Boolean);
+            const urls = [];
+            const seen = new Set();
+            raw.split(/[\s,;\n\r]+/).forEach(candidate => {
+                const trimmed = candidate.trim();
+                if (trimmed && !seen.has(trimmed)) {
+                    seen.add(trimmed);
+                    urls.push(trimmed);
+                }
+            });
             if (!urls.length) {
-                updateDropboxStatus('Paste a valid Dropbox link first.', 'error');
+                updateDropboxStatus('Paste one or more public CSV links first.', 'error');
                 if (dropboxUrlInput) dropboxUrlInput.focus();
                 return;
             }
             dropboxFetchBtn.disabled = true;
-            updateDropboxStatus(`Fetching Dropbox file${urls.length > 1 ? 's' : ''}…`);
+            updateDropboxStatus(`Fetching file${urls.length > 1 ? 's' : ''}…`);
             try {
                 const files = [];
-                for (const url of urls) {
-                    const candidates = buildDropboxFetchUrls(url);
-                    if (!candidates.length) {
-                        throw new Error(`Could not understand Dropbox link: ${url}`);
-                    }
-                    let response = null;
-                    let resolvedUrl = '';
-                    let lastError = null;
-                    for (const candidate of candidates) {
-                        try {
-                            response = await fetch(candidate);
-                            if (response && response.ok) {
-                                resolvedUrl = candidate;
-                                break;
-                            }
-                            lastError = new Error(`Download failed (${response ? response.status : 'unknown'}) for ${candidate}`);
-                        } catch (fetchErr) {
-                            lastError = fetchErr;
-                            response = null;
+                for (const originalUrl of urls) {
+                    const normalized = normalizePublicCsvUrl(originalUrl);
+                    const host = getUrlHostDisplay(originalUrl);
+                    let response;
+                    try {
+                        response = await fetch(normalized);
+                    } catch (fetchErr) {
+                        if (fetchErr && fetchErr.name === 'TypeError') {
+                            throw new Error('This link may not allow direct downloads or is blocked by CORS. Make sure the link is a public direct CSV download.');
                         }
+                        throw new Error(`Failed to fetch ${host}: ${fetchErr && fetchErr.message ? fetchErr.message : 'Unknown error.'}`);
                     }
                     if (!response || !response.ok) {
-                        throw lastError || new Error(`Download failed for ${url}`);
+                        const statusText = response ? `${response.status}${response.statusText ? ` ${response.statusText}` : ''}`.trim() : 'unknown status';
+                        throw new Error(`Download failed from ${host} (HTTP ${statusText || 'unknown'}).`);
                     }
                     const blob = await response.blob();
                     if (!blob || !blob.size) {
-                        throw new Error(`No data returned for ${url}`);
+                        throw new Error(`No data returned from ${host}.`);
                     }
-                    const sourceForName = resolvedUrl || url;
-                    let name = inferDropboxFilename(sourceForName, response) || 'dropbox.csv';
-                    const mime = (blob.type || '').toLowerCase();
-                    const looksCsv = mime.includes('csv') || mime.includes('text') || mime.includes('excel');
-                    if (!name.toLowerCase().endsWith('.csv') && looksCsv) {
-                        name += '.csv';
+                    const contentTypeHeader = response.headers ? response.headers.get('Content-Type') : '';
+                    const contentType = contentTypeHeader ? contentTypeHeader.toLowerCase() : '';
+                    const isKnownEndpoint = isKnownCsvEndpoint(normalized);
+                    let treatAsCsv = false;
+                    if (contentType) {
+                        const lower = contentType.toLowerCase();
+                        const csvIndicators = ['text/csv', 'application/csv', 'application/vnd.ms-excel', 'text/plain', 'application/octet-stream'];
+                        const isCsvMime = csvIndicators.some(ind => lower.includes(ind));
+                        const isSpreadsheet = lower.includes('spreadsheetml');
+                        if (isCsvMime || isSpreadsheet) {
+                            treatAsCsv = true;
+                        } else if (lower.includes('text') && !lower.includes('html')) {
+                            treatAsCsv = true;
+                        } else if (lower.includes('html')) {
+                            if (isKnownEndpoint) {
+                                treatAsCsv = true;
+                            } else {
+                                throw new Error(`Expected CSV but received HTML content from ${host}.`);
+                            }
+                        } else if (isKnownEndpoint) {
+                            treatAsCsv = true;
+                        } else {
+                            throw new Error(`Expected CSV but received ${lower || 'a different format'} from ${host}.`);
+                        }
+                    } else {
+                        treatAsCsv = isKnownEndpoint || /\.csv(?:[?#]|$)/i.test(normalized);
+                        if (!treatAsCsv) {
+                            throw new Error(`Could not confirm CSV content from ${host}.`);
+                        }
                     }
-                    if (!looksCsv && !name.toLowerCase().endsWith('.csv')) {
-                        throw new Error(`Expected a CSV download but received ${mime || 'a different format'} from ${url}`);
-                    }
-                    const file = new File([blob], name, { type: blob.type || 'text/csv' });
+                    const filename = inferDownloadFilename(normalized, response, treatAsCsv);
+                    const file = new File([blob], filename, { type: blob.type || (treatAsCsv ? 'text/csv' : '') });
                     files.push(file);
                 }
                 if (!files.length) {
-                    updateDropboxStatus('No downloadable CSV files were found at that link.', 'error');
+                    updateDropboxStatus('No downloadable CSV files were found for those links.', 'error');
                     return;
                 }
                 if (dropboxUrlInput) dropboxUrlInput.value = '';
                 const loaded = await ingestCsvFiles(files);
                 if (loaded) {
-                    updateDropboxStatus(`Loaded ${files.length} Dropbox file${files.length > 1 ? 's' : ''}.`, 'success');
+                    updateDropboxStatus(`Loaded ${files.length} file${files.length > 1 ? 's' : ''}.`, 'success');
                 } else {
                     updateDropboxStatus('No rows were parsed from the downloaded CSV file(s).', 'error');
                 }
             } catch (err) {
                 console.error(err);
-                updateDropboxStatus(err && err.message ? `Failed to load Dropbox file(s): ${err.message}` : 'Failed to load Dropbox file(s).', 'error');
+                const message = err && err.message ? err.message : 'Failed to load file(s).';
+                if (message.includes('blocked by CORS')) {
+                    updateDropboxStatus('This link may not allow direct downloads or is blocked by CORS. Make sure the link is a public direct CSV download.', 'error');
+                } else {
+                    updateDropboxStatus(`Failed to load file(s): ${message}`, 'error');
+                }
             } finally {
                 dropboxFetchBtn.disabled = false;
             }
+        }
+
+        async function handleDropboxFetch() {
+            return handleUrlFetch();
         }
 
         // periodo parser and normalization
