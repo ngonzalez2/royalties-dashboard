@@ -811,6 +811,8 @@
         const workIncomeChartEl = document.getElementById('workIncomeChart');
         const downloadWorkIncomeBtn = document.getElementById('downloadWorkIncome');
         let currentWorkIncomeWork = null;
+        const workIncomeCache = new Map();
+        let workIncomeCacheDirty = true;
 
         if (workIncomeModeEl) {
             workIncomeModeEl.value = 'series';
@@ -1130,6 +1132,7 @@
             rawDataRows = [];
             fileDiagnostics = [];
             showDiagnostics();
+            markWorkIncomeCacheDirty();
             for (const f of files) {
                 try {
                     const rows = await parseCsvFile(f);
@@ -1289,6 +1292,7 @@
                 }
             }
             normalized = normalizeDataFromCsv(rawDataRows);
+            markWorkIncomeCacheDirty();
             await convertCurrenciesToUSD();
             renderLandingKpis();
             populateWorkIncomeSelect();
@@ -1477,6 +1481,7 @@
                     r._display_currency = currency;
                 }
             });
+            markWorkIncomeCacheDirty();
             updateDiagnosticsTotals();
         }
 
@@ -1759,36 +1764,151 @@
 
         function canonicalizeWorkTitle(title) {
             if (!title && title !== 0) return '';
-            return String(title)
+            let normalizedTitle = String(title)
                 .trim()
-                .replace(/\s+/g, ' ')
-                .toLowerCase();
+                .replace(/\s+/g, ' ');
+            if (typeof normalizedTitle.normalize === 'function') {
+                normalizedTitle = normalizedTitle
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '');
+            }
+            return normalizedTitle.toLowerCase();
+        }
+
+        function markWorkIncomeCacheDirty() {
+            workIncomeCacheDirty = true;
+        }
+
+        function deriveQuarterInfoForRow(row) {
+            if (!row) return null;
+            const rawQuarter = row.quarter ? String(row.quarter).trim() : '';
+            const directParts = parseQuarterParts(rawQuarter);
+            if (directParts) {
+                const label = `${directParts.year}-Q${directParts.quarter}`;
+                const baseDate = (row.quarterDate instanceof Date && !isNaN(row.quarterDate))
+                    ? new Date(row.quarterDate.getFullYear(), Math.floor(row.quarterDate.getMonth() / 3) * 3, 1)
+                    : quarterLabelToDate(label);
+                if (baseDate instanceof Date && !isNaN(baseDate)) {
+                    return { label, date: baseDate };
+                }
+            }
+            if (row.quarterDate instanceof Date && !isNaN(row.quarterDate)) {
+                const qDate = row.quarterDate;
+                const q = Math.floor(qDate.getMonth() / 3) + 1;
+                const label = `${qDate.getFullYear()}-Q${q}`;
+                return {
+                    label,
+                    date: new Date(qDate.getFullYear(), (q - 1) * 3, 1)
+                };
+            }
+            return null;
+        }
+
+        function compareQuarterLabels(a, b) {
+            const aParts = parseQuarterParts(a);
+            const bParts = parseQuarterParts(b);
+            if (!aParts && !bParts) return 0;
+            if (!aParts) return 1;
+            if (!bParts) return -1;
+            if (aParts.year !== bParts.year) return aParts.year - bParts.year;
+            return aParts.quarter - bParts.quarter;
+        }
+
+        function advanceQuarterParts(parts) {
+            if (!parts) return;
+            if (parts.quarter === 4) {
+                parts.quarter = 1;
+                parts.year += 1;
+            } else {
+                parts.quarter += 1;
+            }
+        }
+
+        function isAfterQuarterParts(a, b) {
+            if (!a || !b) return false;
+            return a.year > b.year || (a.year === b.year && a.quarter > b.quarter);
+        }
+
+        function ensureWorkIncomeCache() {
+            if (!workIncomeCacheDirty) return;
+            workIncomeCache.clear();
+            workIncomeCacheDirty = false;
+            if (!normalized || !normalized.length) return;
+            const buckets = new Map();
+            normalized.forEach(row => {
+                const title = row && row.work_title ? String(row.work_title).trim() : '';
+                if (!title) return;
+                const key = canonicalizeWorkTitle(title);
+                if (!key) return;
+                if (!buckets.has(key)) {
+                    buckets.set(key, {
+                        labels: new Map(),
+                        quarters: new Map()
+                    });
+                }
+                const bucket = buckets.get(key);
+                bucket.labels.set(title, (bucket.labels.get(title) || 0) + 1);
+                const quarterInfo = deriveQuarterInfoForRow(row);
+                if (!quarterInfo) return;
+                if (!bucket.quarters.has(quarterInfo.label)) {
+                    bucket.quarters.set(quarterInfo.label, {
+                        amount: 0,
+                        quarterDate: quarterInfo.date
+                    });
+                }
+                const quarterEntry = bucket.quarters.get(quarterInfo.label);
+                quarterEntry.amount += row.amount || 0;
+                if (!quarterEntry.quarterDate || !(quarterEntry.quarterDate instanceof Date) || isNaN(quarterEntry.quarterDate)) {
+                    quarterEntry.quarterDate = quarterInfo.date;
+                }
+            });
+            buckets.forEach((bucket, key) => {
+                const labelCandidates = Array.from(bucket.labels.entries());
+                let displayName = labelCandidates.length
+                    ? labelCandidates.sort((a, b) => {
+                        if (b[1] !== a[1]) return b[1] - a[1];
+                        return a[0].localeCompare(b[0], undefined, { sensitivity: 'base' });
+                    })[0][0]
+                    : key;
+                const quarterKeys = Array.from(bucket.quarters.keys()).sort(compareQuarterLabels);
+                const series = [];
+                if (quarterKeys.length) {
+                    const firstParts = parseQuarterParts(quarterKeys[0]);
+                    const lastParts = parseQuarterParts(quarterKeys[quarterKeys.length - 1]);
+                    if (firstParts && lastParts) {
+                        const cursor = { ...firstParts };
+                        while (!isAfterQuarterParts(cursor, lastParts)) {
+                            const label = `${cursor.year}-Q${cursor.quarter}`;
+                            const entry = bucket.quarters.get(label);
+                            const date = (entry && entry.quarterDate instanceof Date && !isNaN(entry.quarterDate))
+                                ? entry.quarterDate
+                                : quarterLabelToDate(label);
+                            series.push({
+                                quarter: label,
+                                quarterDate: date instanceof Date && !isNaN(date) ? date : quarterLabelToDate(label),
+                                amount: entry ? entry.amount : 0
+                            });
+                            advanceQuarterParts(cursor);
+                        }
+                    }
+                }
+                workIncomeCache.set(key, {
+                    displayName,
+                    series
+                });
+            });
         }
 
         function populateWorkIncomeSelect() {
             if (!workIncomeSelectEl) return;
+            ensureWorkIncomeCache();
             const previous = currentWorkIncomeWork || workIncomeSelectEl.value || '';
             workIncomeSelectEl.innerHTML = '';
-            if (!normalized || normalized.length === 0) {
-                const opt = document.createElement('option');
-                opt.value = '';
-                opt.text = 'No works available';
-                workIncomeSelectEl.appendChild(opt);
-                workIncomeSelectEl.disabled = true;
-                currentWorkIncomeWork = null;
-                if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
-                return;
-            }
-            const worksMap = new Map();
-            normalized.forEach(row => {
-                const title = row.work_title ? String(row.work_title).trim() : '';
-                if (!title) return;
-                const key = canonicalizeWorkTitle(title);
-                if (!key) return;
-                if (!worksMap.has(key)) worksMap.set(key, title);
-            });
-            const works = Array.from(worksMap.values()).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-            if (!works.length) {
+            const entries = Array.from(workIncomeCache.entries()).map(([key, value]) => ({
+                key,
+                displayName: value.displayName && value.displayName.trim().length ? value.displayName : key
+            })).sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
+            if (!entries.length) {
                 const opt = document.createElement('option');
                 opt.value = '';
                 opt.text = 'No works available';
@@ -1799,100 +1919,49 @@
                 return;
             }
             workIncomeSelectEl.disabled = false;
-            works.forEach(work => {
+            entries.forEach(entry => {
                 const opt = document.createElement('option');
-                opt.value = work;
-                opt.text = work;
+                opt.value = entry.displayName;
+                opt.text = entry.displayName;
                 workIncomeSelectEl.appendChild(opt);
             });
             const previousKey = canonicalizeWorkTitle(previous);
-            const currentKey = canonicalizeWorkTitle(currentWorkIncomeWork);
-            if (previousKey) {
-                const match = works.find(work => canonicalizeWorkTitle(work) === previousKey);
-                if (match) currentWorkIncomeWork = match;
+            let nextSelection = '';
+            if (previousKey && workIncomeCache.has(previousKey)) {
+                nextSelection = workIncomeCache.get(previousKey).displayName;
+            } else {
+                nextSelection = entries[0].displayName;
             }
-            if (!currentWorkIncomeWork && currentKey) {
-                const matchCurrent = works.find(work => canonicalizeWorkTitle(work) === currentKey);
-                if (matchCurrent) currentWorkIncomeWork = matchCurrent;
-            }
-            if (!currentWorkIncomeWork || !works.includes(currentWorkIncomeWork)) {
-                currentWorkIncomeWork = works[0];
-            }
-            workIncomeSelectEl.value = currentWorkIncomeWork;
+            currentWorkIncomeWork = nextSelection;
+            workIncomeSelectEl.value = nextSelection;
         }
 
         function buildWorkIncomeSeries(workTitle) {
-            if (!workTitle || !normalized || !normalized.length) return [];
-            const map = new Map();
+            ensureWorkIncomeCache();
+            if (!workTitle || !normalized || !normalized.length) {
+                return {
+                    series: [],
+                    displayName: workTitle || ''
+                };
+            }
             const targetKey = canonicalizeWorkTitle(workTitle);
-            if (!targetKey) return [];
-            normalized.forEach(row => {
-                const title = row.work_title ? String(row.work_title).trim() : '';
-                if (!title) return;
-                const rowKey = canonicalizeWorkTitle(title);
-                if (!rowKey || rowKey !== targetKey) return;
-                const quarter = row.quarter || null;
-                if (!quarter) return;
-                let entry = map.get(quarter);
-                if (!entry) {
-                    const dt = (row.quarterDate instanceof Date && !isNaN(row.quarterDate)) ? row.quarterDate : quarterLabelToDate(quarter);
-                    entry = {
-                        quarter,
-                        quarterDate: dt,
-                        amount: 0
-                    };
-                    map.set(quarter, entry);
-                }
-                entry.amount += row.amount || 0;
-                if (!entry.quarterDate) {
-                    const dt = (row.quarterDate instanceof Date && !isNaN(row.quarterDate)) ? row.quarterDate : quarterLabelToDate(quarter);
-                    if (dt) entry.quarterDate = dt;
-                }
-            });
-            const validEntries = Array.from(map.entries()).filter(([key, value]) => {
-                if (!(value.quarterDate instanceof Date) || isNaN(value.quarterDate)) return false;
-                return parseQuarterParts(key) !== null;
-            });
-            if (!validEntries.length) return [];
-            validEntries.sort((a, b) => a[1].quarterDate - b[1].quarterDate);
-            const firstParts = parseQuarterParts(validEntries[0][0]);
-            const lastParts = parseQuarterParts(validEntries[validEntries.length - 1][0]);
-            if (!firstParts || !lastParts) {
-                return validEntries.map(([, value]) => value);
+            if (!targetKey) {
+                return {
+                    series: [],
+                    displayName: workTitle || ''
+                };
             }
-            const timeline = [];
-            const advance = parts => {
-                if (parts.quarter === 4) {
-                    parts.quarter = 1;
-                    parts.year += 1;
-                } else {
-                    parts.quarter += 1;
-                }
+            const cached = workIncomeCache.get(targetKey);
+            if (!cached) {
+                return {
+                    series: [],
+                    displayName: workTitle || ''
+                };
+            }
+            return {
+                series: cached.series,
+                displayName: cached.displayName
             };
-            const isAfter = (a, b) => a.year > b.year || (a.year === b.year && a.quarter > b.quarter);
-            const current = { ...firstParts };
-            while (!isAfter(current, lastParts)) {
-                const key = `${current.year}-Q${current.quarter}`;
-                const existing = map.get(key);
-                if (existing && existing.quarterDate instanceof Date && !isNaN(existing.quarterDate)) {
-                    timeline.push({
-                        quarter: existing.quarter,
-                        quarterDate: existing.quarterDate,
-                        amount: existing.amount
-                    });
-                } else {
-                    const dt = quarterLabelToDate(key);
-                    if (dt) {
-                        timeline.push({
-                            quarter: key,
-                            quarterDate: dt,
-                            amount: 0
-                        });
-                    }
-                }
-                advance(current);
-            }
-            return timeline;
         }
 
         function renderWorkIncomeChart() {
@@ -1916,16 +1985,32 @@
                 return;
             }
             currentWorkIncomeWork = selectedWork;
-            const series = buildWorkIncomeSeries(selectedWork);
-            if (!series.length) {
+            const { series, displayName } = buildWorkIncomeSeries(selectedWork);
+            const resolvedName = displayName || selectedWork;
+            currentWorkIncomeWork = resolvedName;
+            if (workIncomeSelectEl && workIncomeSelectEl.value !== resolvedName) {
+                workIncomeSelectEl.value = resolvedName;
+            }
+            const sanitizedSeries = (series || []).map(point => {
+                const date = (point && point.quarterDate instanceof Date && !isNaN(point.quarterDate))
+                    ? point.quarterDate
+                    : quarterLabelToDate(point ? point.quarter : null);
+                if (!(date instanceof Date) || isNaN(date)) return null;
+                return {
+                    quarter: point.quarter,
+                    quarterDate: date,
+                    amount: point.amount || 0
+                };
+            }).filter(Boolean);
+            if (!sanitizedSeries.length) {
                 if (typeof Plotly !== 'undefined') Plotly.purge(workIncomeChartEl);
-                workIncomeChartEl.innerHTML = `<div class="small">No quarterly data found for <strong>${escapeHtml(selectedWork)}</strong>.</div>`;
+                workIncomeChartEl.innerHTML = `<div class="small">No quarterly data found for <strong>${escapeHtml(resolvedName)}</strong>.</div>`;
                 if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
                 return;
             }
             const mode = workIncomeModeEl ? workIncomeModeEl.value : 'series';
-            const x = series.map(point => point.quarterDate || quarterLabelToDate(point.quarter));
-            const baseY = series.map(point => point.amount || 0);
+            const x = sanitizedSeries.map(point => point.quarterDate);
+            const baseY = sanitizedSeries.map(point => point.amount || 0);
             let y = baseY;
             if (mode === 'cumulative') {
                 let sum = 0;
@@ -1939,7 +2024,7 @@
             const trace = {
                 x,
                 y,
-                customdata: series.map(point => point.quarter),
+                customdata: sanitizedSeries.map(point => point.quarter),
                 type: 'scatter',
                 mode: 'lines+markers',
                 line: {
@@ -1965,7 +2050,7 @@
                     color: '#E0E6ED'
                 },
                 title: {
-                    text: `${selectedWork} — ${titleDetail}`,
+                    text: `${resolvedName} — ${titleDetail}`,
                     font: {
                         size: 22,
                         color: '#7CF1B4'
@@ -2014,7 +2099,10 @@
                 }
             };
             workIncomeChartEl.innerHTML = '';
-            Plotly.react(workIncomeChartEl, [trace], layout, config);
+            if (typeof Plotly !== 'undefined') {
+                Plotly.purge(workIncomeChartEl);
+                Plotly.newPlot(workIncomeChartEl, [trace], layout, config);
+            }
             if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = false;
         }
 
@@ -2645,6 +2733,7 @@
             diag.fileTotal = sourceTotal;
             diag.fileTotalSource = sourceTotal;
             normalized = normalizeDataFromCsv(rawDataRows);
+            markWorkIncomeCacheDirty();
             convertCurrenciesToUSD().then(() => {
                 refreshVisualsAfterConversion();
                 alert('Mapping updated and reprocessed.');
@@ -2780,6 +2869,7 @@
             diag.fileTotalSource = sourceTotal;
             showDiagnostics();
             normalized = normalizeDataFromCsv(rawDataRows);
+            markWorkIncomeCacheDirty();
             convertCurrenciesToUSD().then(() => {
                 refreshVisualsAfterConversion();
                 alert('Re-detection done.');
