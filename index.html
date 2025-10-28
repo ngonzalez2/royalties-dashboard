@@ -1178,21 +1178,9 @@
                         if (headers.includes(SGAE_HEADERS.WORK_TITLE)) titleCol = SGAE_HEADERS.WORK_TITLE;
                         if (headers.includes(SGAE_HEADERS.PERIOD)) periodCol = SGAE_HEADERS.PERIOD;
                     } else if (provider === 'WARNER CHAPPELL') {
-                        amountCol = pickHeader(
-                            'amount_paid_less_tax',
-                            'amount_paid_less_taxes',
-                            'amount_paid_less_tax_local',
-                            'amount_paid_less_tax_loc_curr',
-                            'amount_paid'
-                        ) || headers.find(h => /amount|paid|net|royalty/i.test(h)) || headers[0];
-                        titleCol = pickHeader('tango_work_title', 'tango_work_code', 'work_title', 'title');
-                        periodCol = pickHeader(
-                            'royalty_period',
-                            'royalty period',
-                            'royalty_period_description',
-                            'royalty_period_desc',
-                            'period'
-                        );
+                        amountCol = pickHeader('amount_paid_less_tax', 'amount_paid') || headers[0];
+                        titleCol = pickHeader('tango_work_title', 'tango_work_code');
+                        periodCol = pickHeader('royalty_period');
                         territoryCol = pickHeader('source_territory_name', 'processing_territory_name');
                         dedCol = null;
                         dedIsAlwaysZero = true;
