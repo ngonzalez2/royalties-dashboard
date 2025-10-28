@@ -1460,6 +1460,8 @@
                 const any = normalized.find(r => r.quarter === q && r.quarterDate);
                 return any ? any.quarterDate : new Date(q.split('-')[0], 0, 1);
             });
+            const palette = ['#4A90E2', '#50E3C2', '#AAB4C2', '#E94E3D', '#7A8A9F'];
+            const fillPalette = ['rgba(74,144,226,0.45)', 'rgba(80,227,194,0.45)', 'rgba(170,180,194,0.45)', 'rgba(233,78,61,0.45)', 'rgba(122,138,159,0.45)'];
             const traces = [];
             for (const s of agg.series) {
                 if (hideOther && s.provider === 'Other') continue;
@@ -1471,7 +1473,9 @@
                         type: 'scatter',
                         mode: 'none',
                         stackgroup: 'stack',
-                        hoverinfo: 'x+y+name'
+                        hoverinfo: 'x+y+name',
+                        line: { width: 0 },
+                        fillcolor: fillPalette[traces.length % fillPalette.length]
                     });
                 } else {
                     traces.push({
@@ -1480,29 +1484,60 @@
                         name: s.provider,
                         type: 'scatter',
                         mode: 'lines+markers',
-                        hoverinfo: 'x+y+name'
+                        hoverinfo: 'x+y+name',
+                        line: {
+                            width: 3,
+                            color: palette[traces.length % palette.length]
+                        },
+                        marker: {
+                            size: 6,
+                            color: palette[traces.length % palette.length]
+                        }
                     });
                 }
             }
             const layout = {
-                margin: {
-                    t: 10,
-                    l: 60,
-                    r: 10,
-                    b: 40
+                template: 'plotly_dark',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {
+                    family: 'Inter, sans-serif',
+                    color: '#E0E6ED'
                 },
                 title: {
                     text: 'Net income over time by provider (USD)',
                     font: {
-                        size: 14
+                        size: 22,
+                        color: '#4A90E2'
                     }
                 },
+                margin: {
+                    t: 60,
+                    b: 50,
+                    l: 60,
+                    r: 30
+                },
                 xaxis: {
-                    tickformat: '%Y-Q%q'
+                    tickformat: '%Y-Q%q',
+                    showgrid: true,
+                    gridcolor: 'rgba(255,255,255,0.05)',
+                    color: '#AAB4C2',
+                    title: {
+                        text: '',
+                        font: { color: '#AAB4C2' }
+                    }
                 },
                 yaxis: {
-                    tickformat: '.2f'
-                }
+                    tickformat: '.2f',
+                    showgrid: true,
+                    gridcolor: 'rgba(255,255,255,0.05)',
+                    color: '#AAB4C2',
+                    title: {
+                        text: '',
+                        font: { color: '#AAB4C2' }
+                    }
+                },
+                showlegend: traces.length > 1
             };
             Plotly.newPlot(el, traces, layout, {
                 responsive: true,
@@ -1524,6 +1559,8 @@
                 const any = normalized.find(r => r.quarter === q && r.quarterDate);
                 return any ? any.quarterDate : new Date(q.split('-')[0], 0, 1);
             });
+            const palette = ['#4A90E2', '#50E3C2', '#AAB4C2', '#E94E3D', '#7A8A9F'];
+            const fillPalette = ['rgba(74,144,226,0.45)', 'rgba(80,227,194,0.45)', 'rgba(170,180,194,0.45)', 'rgba(233,78,61,0.45)', 'rgba(122,138,159,0.45)'];
             const cumSeries = agg.series.map(s => {
                 let cum = 0;
                 const vals = s.values.map(v => {
@@ -1547,7 +1584,9 @@
                         type: 'scatter',
                         mode: 'none',
                         stackgroup: 'stack',
-                        hoverinfo: 'x+y+name'
+                        hoverinfo: 'x+y+name',
+                        line: { width: 0 },
+                        fillcolor: fillPalette[traces.length % fillPalette.length]
                     });
                 } else {
                     traces.push({
@@ -1556,29 +1595,60 @@
                         name: s.provider,
                         type: 'scatter',
                         mode: 'lines+markers',
-                        hoverinfo: 'x+y+name'
+                        hoverinfo: 'x+y+name',
+                        line: {
+                            width: 3,
+                            color: palette[traces.length % palette.length]
+                        },
+                        marker: {
+                            size: 6,
+                            color: palette[traces.length % palette.length]
+                        }
                     });
                 }
             }
             const layout = {
-                margin: {
-                    t: 10,
-                    l: 60,
-                    r: 10,
-                    b: 40
+                template: 'plotly_dark',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {
+                    family: 'Inter, sans-serif',
+                    color: '#E0E6ED'
                 },
                 title: {
                     text: 'Cumulative income by provider (USD)',
                     font: {
-                        size: 14
+                        size: 22,
+                        color: '#4A90E2'
                     }
                 },
+                margin: {
+                    t: 60,
+                    b: 50,
+                    l: 60,
+                    r: 30
+                },
                 xaxis: {
-                    tickformat: '%Y-Q%q'
+                    tickformat: '%Y-Q%q',
+                    showgrid: true,
+                    gridcolor: 'rgba(255,255,255,0.05)',
+                    color: '#AAB4C2',
+                    title: {
+                        text: '',
+                        font: { color: '#AAB4C2' }
+                    }
                 },
                 yaxis: {
-                    tickformat: '.2f'
-                }
+                    tickformat: '.2f',
+                    showgrid: true,
+                    gridcolor: 'rgba(255,255,255,0.05)',
+                    color: '#AAB4C2',
+                    title: {
+                        text: '',
+                        font: { color: '#AAB4C2' }
+                    }
+                },
+                showlegend: traces.length > 1
             };
             Plotly.newPlot(el, traces, layout, {
                 responsive: true,
@@ -1647,22 +1717,45 @@
                 type: 'bar',
                 orientation: 'h',
                 marker: {
-                    color: 'rgba(99,179,255,0.95)'
+                    color: '#4A90E2'
                 }
             };
             const layout = {
-                margin: {
-                    t: 10,
-                    l: 260,
-                    r: 10,
-                    b: 40
+                template: 'plotly_dark',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {
+                    family: 'Inter, sans-serif',
+                    color: '#E0E6ED'
                 },
                 title: {
                     text: 'Top 10 works (USD)',
                     font: {
-                        size: 14
+                        size: 22,
+                        color: '#4A90E2'
                     }
-                }
+                },
+                margin: {
+                    t: 60,
+                    b: 50,
+                    l: 260,
+                    r: 30
+                },
+                xaxis: {
+                    showgrid: true,
+                    gridcolor: 'rgba(255,255,255,0.05)',
+                    color: '#AAB4C2',
+                    title: {
+                        text: 'USD',
+                        font: { color: '#AAB4C2' }
+                    }
+                },
+                yaxis: {
+                    showgrid: true,
+                    gridcolor: 'rgba(255,255,255,0.05)',
+                    color: '#AAB4C2'
+                },
+                showlegend: false
             };
             Plotly.newPlot(el, [trace], layout, {
                 responsive: true,
@@ -1769,31 +1862,65 @@
                 name: 'Other',
                 values: otherVals
             });
-            const traces = series.map(s => ({
+            const palette = ['#4A90E2', '#50E3C2', '#AAB4C2', '#E94E3D', '#7A8A9F'];
+            const traces = series.map((s, idx) => ({
                 x: quarters,
                 y: s.values,
                 name: s.name,
-                type: 'bar'
+                type: 'bar',
+                marker: {
+                    color: palette[idx % palette.length]
+                }
             }));
             const layout = {
-                barmode: 'stack',
-                margin: {
-                    t: 10,
-                    l: 80,
-                    r: 10,
-                    b: 120
+                template: 'plotly_dark',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {
+                    family: 'Inter, sans-serif',
+                    color: '#E0E6ED'
                 },
                 title: {
                     text: 'Revenue class breakdown (stacked) by quarter (USD)',
                     font: {
-                        size: 14
+                        size: 22,
+                        color: '#4A90E2'
                     }
                 },
+                margin: {
+                    t: 60,
+                    b: 120,
+                    l: 80,
+                    r: 30
+                },
+                xaxis: {
+                    showgrid: true,
+                    gridcolor: 'rgba(255,255,255,0.05)',
+                    color: '#AAB4C2',
+                    title: {
+                        text: 'Quarter',
+                        font: { color: '#AAB4C2' }
+                    }
+                },
+                yaxis: {
+                    showgrid: true,
+                    gridcolor: 'rgba(255,255,255,0.05)',
+                    color: '#AAB4C2',
+                    title: {
+                        text: 'USD',
+                        font: { color: '#AAB4C2' }
+                    }
+                },
+                barmode: 'stack',
                 legend: {
                     orientation: 'v',
                     x: 1.02,
-                    y: 1
-                }
+                    y: 1,
+                    font: {
+                        color: '#E0E6ED'
+                    }
+                },
+                showlegend: traces.length > 1
             };
             Plotly.newPlot(el, traces, layout, {
                 responsive: true,
