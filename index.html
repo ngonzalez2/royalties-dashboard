@@ -596,7 +596,7 @@
                 </svg></div>
             <div>
                 <h1>Royalties Dashboard</h1>
-                <div class="subhead"><span class="version-chip">v15</span><span>ASCAP International detection with refined provider split.</span></div>
+                <div class="subhead"><span class="version-chip">v15</span></div>
             </div>
 
             <div class="controls">
@@ -694,11 +694,6 @@
                 </div>
                 <div class="rev-controls">
                     <select id="revQuarterSelect" class="small-input" style="min-width:140px"></select>
-                    <label class="small">Top N</label>
-                    <input id="revTopN" class="small-input" type="number" min="1" max="200" value="20" style="width:72px" />
-                    <label class="small">Group <span style="color:#9fd0ff">‹</span>%</label>
-                    <input id="revThreshold" class="small-input" type="number" min="0" max="100" value="1" style="width:72px" />
-                    <button id="applyRevControls" class="muted">Apply</button>
                     <button id="downloadRev" class="muted">Download PNG</button>
                     <button class="back-btn nav-btn ghost" data-target="landingView">Back</button>
                 </div>
@@ -1929,14 +1924,19 @@
         }
 
         function getRevControls() {
-            const topN = Math.max(1, parseInt(document.getElementById('revTopN').value || '20', 10));
-            const threshold = Math.max(0, parseFloat(document.getElementById('revThreshold').value || '1'));
+            const topInput = document.getElementById('revTopN');
+            const thresholdInput = document.getElementById('revThreshold');
+            const topN = topInput ? Math.max(1, parseInt(topInput.value || '20', 10)) : 20;
+            const threshold = thresholdInput ? Math.max(0, parseFloat(thresholdInput.value || '1')) : 1;
             return {
                 topN,
                 threshold
             };
         }
-        document.getElementById('applyRevControls').addEventListener('click', () => renderRevenueStack());
+        const revQuarterSelectEl = document.getElementById('revQuarterSelect');
+        if (revQuarterSelectEl) {
+            revQuarterSelectEl.addEventListener('change', () => renderRevenueStack());
+        }
 
         // landing KPIs & diagnostics
         function refreshVisualsAfterConversion() {
