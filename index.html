@@ -608,6 +608,7 @@
                     <button id="landingBtn" class="nav-btn">Landing</button>
                     <button id="tsBtn" class="nav-btn">Time series</button>
                     <button id="cumBtn" class="nav-btn">Cumulative</button>
+                    <button id="workIncomeBtn" class="nav-btn">Work Income</button>
                     <button id="topBtn" class="nav-btn">Top works</button>
                     <button id="revBtn" class="nav-btn">Revenue classes</button>
                 </div>
@@ -670,6 +671,29 @@
                 </div>
             </div>
             <div id="cumulativeFull" class="full"></div>
+        </div>
+
+        <div id="workIncomeView" class="card views">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <div>
+                    <h3 style="margin:0">Work income over time</h3>
+                    <div class="small">Select a work to see quarterly income with options for actual or cumulative totals.</div>
+                </div>
+                <div class="chart-controls">
+                    <label class="inline small">Work:
+                        <select id="workIncomeSelect" class="small-input" style="min-width:200px"></select>
+                    </label>
+                    <label class="inline small">View:
+                        <select id="workIncomeMode" class="small-input">
+                            <option value="series">Time series</option>
+                            <option value="cumulative">Cumulative</option>
+                        </select>
+                    </label>
+                    <button id="downloadWorkIncome" class="muted">Download PNG</button>
+                    <button class="back-btn nav-btn ghost" data-target="landingView">Back</button>
+                </div>
+            </div>
+            <div id="workIncomeChart" class="full"></div>
         </div>
 
         <div id="topView" class="card views">
@@ -761,11 +785,12 @@
             COP: 0.00025
         };
 
-        const views = ['landingView', 'tsView', 'cumView', 'topView', 'revView'];
+        const views = ['landingView', 'tsView', 'cumView', 'workIncomeView', 'topView', 'revView'];
         const navButtons = {
             landingView: document.getElementById('landingBtn'),
             tsView: document.getElementById('tsBtn'),
             cumView: document.getElementById('cumBtn'),
+            workIncomeView: document.getElementById('workIncomeBtn'),
             topView: document.getElementById('topBtn'),
             revView: document.getElementById('revBtn')
         };
@@ -773,12 +798,40 @@
         document.getElementById('landingBtn').addEventListener('click', () => showView('landingView'));
         document.getElementById('tsBtn').addEventListener('click', () => showView('tsView'));
         document.getElementById('cumBtn').addEventListener('click', () => showView('cumView'));
+        document.getElementById('workIncomeBtn').addEventListener('click', () => showView('workIncomeView'));
         document.getElementById('topBtn').addEventListener('click', () => showView('topView'));
         document.getElementById('revBtn').addEventListener('click', () => showView('revView'));
         document.querySelectorAll('.back-btn').forEach(b => b.addEventListener('click', (e) => {
             const t = e.currentTarget.dataset.target || 'landingView';
             showView(t);
         }));
+
+        const workIncomeSelectEl = document.getElementById('workIncomeSelect');
+        const workIncomeModeEl = document.getElementById('workIncomeMode');
+        const workIncomeChartEl = document.getElementById('workIncomeChart');
+        const downloadWorkIncomeBtn = document.getElementById('downloadWorkIncome');
+        let currentWorkIncomeWork = null;
+
+        if (workIncomeModeEl) {
+            workIncomeModeEl.value = 'series';
+        }
+
+        if (downloadWorkIncomeBtn) {
+            downloadWorkIncomeBtn.disabled = true;
+        }
+
+        if (workIncomeSelectEl) {
+            workIncomeSelectEl.addEventListener('change', () => {
+                currentWorkIncomeWork = workIncomeSelectEl.value;
+                renderWorkIncomeChart();
+            });
+        }
+
+        if (workIncomeModeEl) {
+            workIncomeModeEl.addEventListener('change', () => {
+                renderWorkIncomeChart();
+            });
+        }
 
         // re-render on control change for immediate feedback
         document.getElementById('tsChartType').addEventListener('change', () => {
@@ -875,6 +928,10 @@
                 overview.classList.remove('hidden');
             } else {
                 overview.classList.add('hidden');
+            }
+            if (id === 'workIncomeView') {
+                populateWorkIncomeSelect();
+                renderWorkIncomeChart();
             }
             if (normalized && normalized.length) {
                 if (id === 'tsView') renderTimeSeriesByProvider();
@@ -1225,6 +1282,7 @@
             normalized = normalizeDataFromCsv(rawDataRows);
             await convertCurrenciesToUSD();
             renderLandingKpis();
+            populateWorkIncomeSelect();
             showView('landingView');
         }
 
@@ -1682,6 +1740,205 @@
             });
         }
 
+        function populateWorkIncomeSelect() {
+            if (!workIncomeSelectEl) return;
+            const previous = currentWorkIncomeWork || workIncomeSelectEl.value || '';
+            workIncomeSelectEl.innerHTML = '';
+            if (!normalized || normalized.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.text = 'No works available';
+                workIncomeSelectEl.appendChild(opt);
+                workIncomeSelectEl.disabled = true;
+                currentWorkIncomeWork = null;
+                if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
+                return;
+            }
+            const worksSet = new Set();
+            normalized.forEach(row => {
+                const title = row.work_title ? String(row.work_title).trim() : '';
+                if (title) worksSet.add(title);
+            });
+            const works = Array.from(worksSet).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+            if (!works.length) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.text = 'No works available';
+                workIncomeSelectEl.appendChild(opt);
+                workIncomeSelectEl.disabled = true;
+                currentWorkIncomeWork = null;
+                if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
+                return;
+            }
+            workIncomeSelectEl.disabled = false;
+            works.forEach(work => {
+                const opt = document.createElement('option');
+                opt.value = work;
+                opt.text = work;
+                workIncomeSelectEl.appendChild(opt);
+            });
+            if (previous && works.includes(previous)) {
+                currentWorkIncomeWork = previous;
+            } else if (currentWorkIncomeWork && works.includes(currentWorkIncomeWork)) {
+                // keep current selection
+            } else {
+                currentWorkIncomeWork = works[0];
+            }
+            workIncomeSelectEl.value = currentWorkIncomeWork;
+        }
+
+        function buildWorkIncomeSeries(workTitle) {
+            if (!workTitle || !normalized || !normalized.length) return [];
+            const map = new Map();
+            normalized.forEach(row => {
+                const title = row.work_title ? String(row.work_title).trim() : '';
+                if (!title || title !== workTitle) return;
+                const quarter = row.quarter || null;
+                if (!quarter) return;
+                let entry = map.get(quarter);
+                if (!entry) {
+                    const dt = (row.quarterDate instanceof Date && !isNaN(row.quarterDate)) ? row.quarterDate : quarterLabelToDate(quarter);
+                    entry = {
+                        quarter,
+                        quarterDate: dt,
+                        amount: 0
+                    };
+                    map.set(quarter, entry);
+                }
+                entry.amount += row.amount || 0;
+                if (!entry.quarterDate) {
+                    const dt = (row.quarterDate instanceof Date && !isNaN(row.quarterDate)) ? row.quarterDate : quarterLabelToDate(quarter);
+                    if (dt) entry.quarterDate = dt;
+                }
+            });
+            const series = Array.from(map.values()).filter(item => item.quarterDate instanceof Date && !isNaN(item.quarterDate));
+            series.sort((a, b) => a.quarterDate - b.quarterDate);
+            return series;
+        }
+
+        function renderWorkIncomeChart() {
+            if (!workIncomeChartEl) return;
+            if (!normalized || normalized.length === 0) {
+                if (typeof Plotly !== 'undefined') Plotly.purge(workIncomeChartEl);
+                workIncomeChartEl.innerHTML = '<div class="small">Upload statements to explore work income.</div>';
+                if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
+                return;
+            }
+            if (workIncomeSelectEl && workIncomeSelectEl.disabled) {
+                workIncomeChartEl.innerHTML = '<div class="small">No works available.</div>';
+                if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
+                return;
+            }
+            const selectedWork = workIncomeSelectEl ? workIncomeSelectEl.value : currentWorkIncomeWork;
+            if (!selectedWork) {
+                if (typeof Plotly !== 'undefined') Plotly.purge(workIncomeChartEl);
+                workIncomeChartEl.innerHTML = '<div class="small">Select a work to view its performance.</div>';
+                if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
+                return;
+            }
+            currentWorkIncomeWork = selectedWork;
+            const series = buildWorkIncomeSeries(selectedWork);
+            if (!series.length) {
+                if (typeof Plotly !== 'undefined') Plotly.purge(workIncomeChartEl);
+                workIncomeChartEl.innerHTML = `<div class="small">No quarterly data found for <strong>${escapeHtml(selectedWork)}</strong>.</div>`;
+                if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
+                return;
+            }
+            const mode = workIncomeModeEl ? workIncomeModeEl.value : 'series';
+            const x = series.map(point => point.quarterDate || quarterLabelToDate(point.quarter));
+            const baseY = series.map(point => point.amount || 0);
+            let y = baseY;
+            if (mode === 'cumulative') {
+                let sum = 0;
+                y = baseY.map(val => {
+                    sum += val;
+                    return sum;
+                });
+            }
+            const yLabel = mode === 'cumulative' ? 'Cumulative income (USD)' : 'Income (USD)';
+            const titleDetail = mode === 'cumulative' ? 'Cumulative income' : 'Quarterly income';
+            const trace = {
+                x,
+                y,
+                customdata: series.map(point => point.quarter),
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {
+                    color: '#7CF1B4',
+                    width: 4
+                },
+                marker: {
+                    size: 8,
+                    color: '#7CF1B4',
+                    line: {
+                        width: 1,
+                        color: '#0B1C24'
+                    }
+                },
+                hovertemplate: '<b>%{customdata}</b><br>$%{y:,.2f}<extra></extra>'
+            };
+            const layout = {
+                template: 'plotly_dark',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {
+                    family: 'Inter, sans-serif',
+                    color: '#E0E6ED'
+                },
+                title: {
+                    text: `${selectedWork} — ${titleDetail}`,
+                    font: {
+                        size: 22,
+                        color: '#7CF1B4'
+                    }
+                },
+                margin: {
+                    t: 60,
+                    b: 60,
+                    l: 70,
+                    r: 30
+                },
+                xaxis: {
+                    type: 'date',
+                    tickformat: '%Y-Q%q',
+                    hoverformat: '%Y-Q%q',
+                    showgrid: true,
+                    gridcolor: 'rgba(255,255,255,0.05)',
+                    color: '#AAB4C2',
+                    title: {
+                        text: 'Quarter',
+                        font: { color: '#AAB4C2' }
+                    }
+                },
+                yaxis: {
+                    tickformat: '$,.2f',
+                    showgrid: true,
+                    gridcolor: 'rgba(255,255,255,0.05)',
+                    color: '#AAB4C2',
+                    title: {
+                        text: yLabel,
+                        font: { color: '#AAB4C2' }
+                    }
+                },
+                transition: {
+                    duration: 400,
+                    easing: 'cubic-in-out'
+                },
+                showlegend: false
+            };
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                toImageButtonOptions: {
+                    format: 'png',
+                    filename: 'work_income_over_time'
+                }
+            };
+            workIncomeChartEl.innerHTML = '';
+            Plotly.react(workIncomeChartEl, [trace], layout, config);
+            if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = false;
+        }
+
         // IMPORTANT: limit top works to top 10
         function aggregateTopWorks(data, topN = 10) {
             const m = new Map();
@@ -1941,8 +2198,10 @@
         // landing KPIs & diagnostics
         function refreshVisualsAfterConversion() {
             renderLandingKpis();
+            populateWorkIncomeSelect();
             if (document.getElementById('tsView').classList.contains('active')) renderTimeSeriesByProvider();
             if (document.getElementById('cumView').classList.contains('active')) renderCumulativeByProvider();
+            if (document.getElementById('workIncomeView').classList.contains('active')) renderWorkIncomeChart();
             if (document.getElementById('topView').classList.contains('active')) renderTopWorksFull();
             if (document.getElementById('revView').classList.contains('active')) renderRevenueStack();
         }
@@ -2514,6 +2773,20 @@
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = 'cumulative_by_provider.png';
+                a.click();
+            });
+        });
+        document.getElementById('downloadWorkIncome').addEventListener('click', () => {
+            if (downloadWorkIncomeBtn && downloadWorkIncomeBtn.disabled) return;
+            if (!workIncomeChartEl) return;
+            Plotly.toImage(workIncomeChartEl, {
+                format: 'png',
+                height: 700,
+                width: 1000
+            }).then(url => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'work_income_over_time.png';
                 a.click();
             });
         });
