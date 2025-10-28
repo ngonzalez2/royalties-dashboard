@@ -1363,6 +1363,7 @@
             const s = String(raw).trim();
             if (s === '') return null;
             const lower = s.toLowerCase();
+            const digitsOnly = s.replace(/\D/g, '');
             const createResult = (year, quarter) => {
                 if (!Number.isFinite(year) || !Number.isFinite(quarter)) return null;
                 if (quarter < 1 || quarter > 4) return null;
@@ -1374,6 +1375,24 @@
                     quarter: `${year}-Q${quarter}`
                 };
             };
+            const rangeMatch = digitsOnly.match(/^((?:19|20)\d{2})(0[1-9]|1[0-2])((?:19|20)\d{2})(0[1-9]|1[0-2])$/);
+            if (rangeMatch) {
+                const startYear = Number(rangeMatch[1]);
+                const startMonth = Number(rangeMatch[2]);
+                const endYear = Number(rangeMatch[3]);
+                const endMonth = Number(rangeMatch[4]);
+                let targetYear = Number.isFinite(endYear) ? endYear : null;
+                let targetMonth = Number.isFinite(endMonth) && endMonth >= 1 && endMonth <= 12 ? endMonth : null;
+                if (!(targetYear && targetMonth) && Number.isFinite(startYear) && Number.isFinite(startMonth) && startMonth >= 1 && startMonth <= 12) {
+                    targetYear = startYear;
+                    targetMonth = startMonth;
+                }
+                if (targetYear && targetMonth) {
+                    const quarter = Math.ceil(targetMonth / 3);
+                    const result = createResult(targetYear, quarter);
+                    if (result) return result;
+                }
+            }
             const explicitAfterYear = lower.match(/((?:19|20)\d{2})\s*[-_/]?\s*q(?:tr)?\s*([1-4])/);
             if (explicitAfterYear) {
                 const year = Number(explicitAfterYear[1]);
@@ -2730,12 +2749,15 @@
                 if (mapping.periodCol) periodParts.push(`date → ${mapping.periodCol}`);
                 if (mapping.periodYearCol) periodParts.push(`year → ${mapping.periodYearCol}`);
                 if (mapping.periodQuarterCol) periodParts.push(`quarter → ${mapping.periodQuarterCol}`);
+                const quarterSourceParts = Array.from(new Set([mapping.periodCol, mapping.periodYearCol, mapping.periodQuarterCol].filter(Boolean)));
+                const quarterSourceLabel = quarterSourceParts.length ? quarterSourceParts.join(' + ') : 'Auto';
                 const mappingSummary = [
                     `Gross: <strong>${escapeHtml(mapping.amountCol || 'Not set')}</strong>`,
                     `Deduction: <strong>${escapeHtml(mapping.dedCol || (dedDisabled ? 'Not applicable' : 'None'))}</strong>`,
                     `Period: <strong>${escapeHtml(periodParts.length ? periodParts.join(' · ') : 'Auto')}</strong>`,
                     `Title: <strong>${escapeHtml(mapping.titleCol || 'Auto')}</strong>`,
-                    `Territory: <strong>${escapeHtml(mapping.territoryCol || 'Auto')}</strong>`
+                    `Territory: <strong>${escapeHtml(mapping.territoryCol || 'Auto')}</strong>`,
+                    `Quarter source: <strong>${escapeHtml(quarterSourceLabel)}</strong>`
                 ].join(' • ');
                 const sourceTotal = Number.isFinite(d.fileTotalSource) ? d.fileTotalSource : (Number.isFinite(d.fileTotal) ? d.fileTotal : 0);
                 return `
