@@ -1195,7 +1195,16 @@
                         if (!amountCol) {
                             amountCol = headers.find(h => /dollar|amount|importe|monto|total/i.test(h)) || headers[0];
                         }
-                        titleCol = headers.find(h => /title|obra|work|tit/i.test(h));
+                        titleCol = pickHeader(
+                            'Work Title',
+                            'work_title',
+                            'WorkTitle',
+                            'Title',
+                            'Song Title',
+                            'Titulo',
+                            'Título'
+                        );
+                        if (!titleCol) titleCol = headers.find(h => /title|obra|work|tit/i.test(h));
                         periodYearCol = pickHeader('Distribution Year', 'DistributionYear', 'Royalty Year', 'Year');
                         periodQuarterCol = pickHeader('Distribution Quarter', 'DistributionQuarter', 'Royalty Quarter', 'Quarter');
                         periodCol = headers.find(h => /period|peri|date|fecha/i.test(h));
@@ -1740,6 +1749,14 @@
             });
         }
 
+        function canonicalizeWorkTitle(title) {
+            if (!title && title !== 0) return '';
+            return String(title)
+                .trim()
+                .replace(/\s+/g, ' ')
+                .toLowerCase();
+        }
+
         function populateWorkIncomeSelect() {
             if (!workIncomeSelectEl) return;
             const previous = currentWorkIncomeWork || workIncomeSelectEl.value || '';
@@ -1754,12 +1771,15 @@
                 if (downloadWorkIncomeBtn) downloadWorkIncomeBtn.disabled = true;
                 return;
             }
-            const worksSet = new Set();
+            const worksMap = new Map();
             normalized.forEach(row => {
                 const title = row.work_title ? String(row.work_title).trim() : '';
-                if (title) worksSet.add(title);
+                if (!title) return;
+                const key = canonicalizeWorkTitle(title);
+                if (!key) return;
+                if (!worksMap.has(key)) worksMap.set(key, title);
             });
-            const works = Array.from(worksSet).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+            const works = Array.from(worksMap.values()).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
             if (!works.length) {
                 const opt = document.createElement('option');
                 opt.value = '';
@@ -1777,11 +1797,17 @@
                 opt.text = work;
                 workIncomeSelectEl.appendChild(opt);
             });
-            if (previous && works.includes(previous)) {
-                currentWorkIncomeWork = previous;
-            } else if (currentWorkIncomeWork && works.includes(currentWorkIncomeWork)) {
-                // keep current selection
-            } else {
+            const previousKey = canonicalizeWorkTitle(previous);
+            const currentKey = canonicalizeWorkTitle(currentWorkIncomeWork);
+            if (previousKey) {
+                const match = works.find(work => canonicalizeWorkTitle(work) === previousKey);
+                if (match) currentWorkIncomeWork = match;
+            }
+            if (!currentWorkIncomeWork && currentKey) {
+                const matchCurrent = works.find(work => canonicalizeWorkTitle(work) === currentKey);
+                if (matchCurrent) currentWorkIncomeWork = matchCurrent;
+            }
+            if (!currentWorkIncomeWork || !works.includes(currentWorkIncomeWork)) {
                 currentWorkIncomeWork = works[0];
             }
             workIncomeSelectEl.value = currentWorkIncomeWork;
@@ -1790,9 +1816,13 @@
         function buildWorkIncomeSeries(workTitle) {
             if (!workTitle || !normalized || !normalized.length) return [];
             const map = new Map();
+            const targetKey = canonicalizeWorkTitle(workTitle);
+            if (!targetKey) return [];
             normalized.forEach(row => {
                 const title = row.work_title ? String(row.work_title).trim() : '';
-                if (!title || title !== workTitle) return;
+                if (!title) return;
+                const rowKey = canonicalizeWorkTitle(title);
+                if (!rowKey || rowKey !== targetKey) return;
                 const quarter = row.quarter || null;
                 if (!quarter) return;
                 let entry = map.get(quarter);
