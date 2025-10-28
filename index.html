@@ -1707,17 +1707,25 @@
         function normalizeDropboxUrl(url) {
             if (!url) return '';
             try {
-                const parsed = new URL(url.trim());
-                if (parsed.hostname && parsed.hostname.includes('dropbox.com')) {
-                    if (parsed.searchParams.has('dl')) {
-                        parsed.searchParams.set('dl', '1');
-                    } else if (parsed.searchParams.has('raw')) {
-                        parsed.searchParams.set('raw', '1');
-                    } else {
-                        parsed.searchParams.set('dl', '1');
-                    }
-                    return parsed.toString();
+                const trimmed = url.trim();
+                const parsed = new URL(trimmed);
+                const hostname = parsed.hostname.toLowerCase();
+                const isDropbox = hostname.includes('dropbox.com');
+                const isDropboxUserContent = hostname.includes('dropboxusercontent.com');
+                if (!isDropbox && !isDropboxUserContent) {
+                    return trimmed;
                 }
+
+                if (isDropbox) {
+                    // Dropbox share links need to point at the usercontent domain to be CORS friendly.
+                    parsed.hostname = 'dl.dropboxusercontent.com';
+                }
+
+                if (parsed.searchParams.has('raw')) {
+                    parsed.searchParams.delete('raw');
+                }
+                parsed.searchParams.set('dl', '1');
+
                 return parsed.toString();
             } catch (err) {
                 return url.trim();
