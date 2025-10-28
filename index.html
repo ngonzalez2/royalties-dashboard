@@ -1178,9 +1178,21 @@
                         if (headers.includes(SGAE_HEADERS.WORK_TITLE)) titleCol = SGAE_HEADERS.WORK_TITLE;
                         if (headers.includes(SGAE_HEADERS.PERIOD)) periodCol = SGAE_HEADERS.PERIOD;
                     } else if (provider === 'WARNER CHAPPELL') {
-                        amountCol = pickHeader('amount_paid_less_tax', 'amount_paid') || headers[0];
-                        titleCol = pickHeader('tango_work_title', 'tango_work_code');
-                        periodCol = pickHeader('royalty_period');
+                        amountCol = pickHeader(
+                            'amount_paid_less_tax',
+                            'amount_paid_less_taxes',
+                            'amount_paid_less_tax_local',
+                            'amount_paid_less_tax_loc_curr',
+                            'amount_paid'
+                        ) || headers.find(h => /amount|paid|net|royalty/i.test(h)) || headers[0];
+                        titleCol = pickHeader('tango_work_title', 'tango_work_code', 'work_title', 'title');
+                        periodCol = pickHeader(
+                            'royalty_period',
+                            'royalty period',
+                            'royalty_period_description',
+                            'royalty_period_desc',
+                            'period'
+                        );
                         territoryCol = pickHeader('source_territory_name', 'processing_territory_name');
                         dedCol = null;
                         dedIsAlwaysZero = true;
@@ -1332,21 +1344,107 @@
             if (raw === null || raw === undefined) return null;
             const s = String(raw).trim();
             if (s === '') return null;
-            const match = s.match(/^(\d{6})/);
-            if (!match) return null;
-            const start = match[1];
-            const year = Number(start.slice(0, 4));
-            const month = Number(start.slice(4, 6));
-            if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return null;
-            const monthIndex = month - 1;
-            const quarter = Math.floor(monthIndex / 3) + 1;
-            const quarterStartMonth = (quarter - 1) * 3;
-            const date = new Date(year, quarterStartMonth, 1);
-            if (isNaN(date)) return null;
-            return {
-                date,
-                quarter: `${year}-Q${quarter}`
+            const lower = s.toLowerCase();
+            const createResult = (year, quarter) => {
+                if (!Number.isFinite(year) || !Number.isFinite(quarter)) return null;
+                if (quarter < 1 || quarter > 4) return null;
+                const monthIndex = (quarter - 1) * 3;
+                const date = new Date(year, monthIndex, 1);
+                if (isNaN(date)) return null;
+                return {
+                    date,
+                    quarter: `${year}-Q${quarter}`
+                };
             };
+            const explicitAfterYear = lower.match(/((?:19|20)\d{2})\s*[-_/]?\s*q(?:tr)?\s*([1-4])/);
+            if (explicitAfterYear) {
+                const year = Number(explicitAfterYear[1]);
+                const quarter = Number(explicitAfterYear[2]);
+                const result = createResult(year, quarter);
+                if (result) return result;
+            }
+            const explicitBeforeYear = lower.match(/q(?:tr)?\s*([1-4])\s*(?:-|\/|\s)*((?:19|20)\d{2})/);
+            if (explicitBeforeYear) {
+                const quarter = Number(explicitBeforeYear[1]);
+                const year = Number(explicitBeforeYear[2]);
+                const result = createResult(year, quarter);
+                if (result) return result;
+            }
+            const compactQuarter = lower.match(/((?:19|20)\d{2})q([1-4])/);
+            if (compactQuarter) {
+                const year = Number(compactQuarter[1]);
+                const quarter = Number(compactQuarter[2]);
+                const result = createResult(year, quarter);
+                if (result) return result;
+            }
+            const monthNames = {
+                jan: 1,
+                january: 1,
+                feb: 2,
+                february: 2,
+                mar: 3,
+                march: 3,
+                apr: 4,
+                april: 4,
+                may: 5,
+                jun: 6,
+                june: 6,
+                jul: 7,
+                july: 7,
+                aug: 8,
+                august: 8,
+                sep: 9,
+                sept: 9,
+                september: 9,
+                oct: 10,
+                october: 10,
+                nov: 11,
+                november: 11,
+                dec: 12,
+                december: 12
+            };
+            const yearMatch = lower.match(/(19|20)\d{2}/);
+            const monthNameMatch = lower.match(/(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)/);
+            if (yearMatch && monthNameMatch) {
+                const year = Number(yearMatch[0]);
+                const rawMonthKey = monthNameMatch[1];
+                const monthKey = Object.keys(monthNames).find(key => rawMonthKey.startsWith(key));
+                const month = monthNames[monthKey];
+                if (Number.isFinite(month)) {
+                    const quarter = Math.floor((month - 1) / 3) + 1;
+                    const result = createResult(year, quarter);
+                    if (result) return result;
+                }
+            }
+            const monthAfterYear = lower.match(/((?:19|20)\d{2})[^0-9a-z]*(0?[1-9]|1[0-2])/);
+            if (monthAfterYear) {
+                const year = Number(monthAfterYear[1]);
+                const month = Number(monthAfterYear[2]);
+                if (Number.isFinite(month) && month >= 1 && month <= 12) {
+                    const quarter = Math.floor((month - 1) / 3) + 1;
+                    const result = createResult(year, quarter);
+                    if (result) return result;
+                }
+            }
+            const monthBeforeYear = lower.match(/(?:^|[^0-9a-z])(0?[1-9]|1[0-2])[^0-9a-z]*((?:19|20)\d{2})/);
+            if (monthBeforeYear) {
+                const month = Number(monthBeforeYear[1]);
+                const year = Number(monthBeforeYear[2]);
+                if (Number.isFinite(month) && month >= 1 && month <= 12) {
+                    const quarter = Math.floor((month - 1) / 3) + 1;
+                    const result = createResult(year, quarter);
+                    if (result) return result;
+                }
+            }
+            const compactMonth = lower.match(/((?:19|20)\d{2})(0[1-9]|1[0-2])/);
+            if (compactMonth) {
+                const year = Number(compactMonth[1]);
+                const month = Number(compactMonth[2]);
+                const quarter = Math.floor((month - 1) / 3) + 1;
+                const result = createResult(year, quarter);
+                if (result) return result;
+            }
+            return null;
         }
 
         function parseAscDomesticPeriod(rawYear, rawQuarter, fallbackRaw) {
@@ -2782,10 +2880,22 @@
                 titleCol = pickHeader(SGAE_HEADERS.WORK_TITLE);
                 periodCol = pickHeader(SGAE_HEADERS.PERIOD);
             } else if (providerGuess === 'WARNER CHAPPELL') {
-                amountCol = pickHeader('amount_paid_less_tax', 'amount_paid') || headers[0];
+                amountCol = pickHeader(
+                    'amount_paid_less_tax',
+                    'amount_paid_less_taxes',
+                    'amount_paid_less_tax_local',
+                    'amount_paid_less_tax_loc_curr',
+                    'amount_paid'
+                ) || headers.find(h => /amount|paid|net|royalty/i.test(h)) || headers[0];
                 dedCol = null;
-                titleCol = pickHeader('tango_work_title', 'tango_work_code');
-                periodCol = pickHeader('royalty_period');
+                titleCol = pickHeader('tango_work_title', 'tango_work_code', 'work_title', 'title');
+                periodCol = pickHeader(
+                    'royalty_period',
+                    'royalty period',
+                    'royalty_period_description',
+                    'royalty_period_desc',
+                    'period'
+                );
                 territoryCol = pickHeader('source_territory_name', 'processing_territory_name');
                 dedIsAlwaysZero = true;
             } else if (providerGuess === 'ASCAP (Dom)') {
