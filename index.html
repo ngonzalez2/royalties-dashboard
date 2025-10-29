@@ -1584,7 +1584,7 @@
                         territoryCol = pickHeader('source_territory_name', 'processing_territory_name');
                         dedCol = null;
                         dedIsAlwaysZero = true;
-                        revenueCol = pickHeader('Revenue Class Description');
+                        revenueCol = pickHeader('tango_income_type_name', 'Revenue Class Description');
                     } else if (provider === 'ASCAP (Dom)') {
                         amountCol = pickHeader(
                             'Dollars',
@@ -1620,7 +1620,7 @@
                         titleCol = headers.find(h => /title|obra|work|tit/i.test(h));
                         periodCol = headers.find(h => /period|peri|date|fecha/i.test(h));
                         dedCol = headers.find(h => /dto|administr|admin|deduc/i.test(h));
-                        revenueCol = pickHeader('Revenue Class Description', 'DESCRIP. CONCEP', 'Music User Genre');
+                        revenueCol = pickHeader('Revenue Class Description', 'DESCRIP. CONCEP', 'Music User Genre', 'tango_income_type_name');
                     }
                     rows.forEach(r => {
                         const gross = amountCol ? parseAmountSmart(r[amountCol]) : NaN;
@@ -3218,7 +3218,7 @@
                     if (s !== '') return s;
                 }
             }
-            const fields = ['DESCRIP. CONCEP', 'Revenue Class Description', 'Music User Genre'];
+            const fields = ['DESCRIP. CONCEP', 'tango_income_type_name', 'Revenue Class Description', 'Music User Genre'];
             for (const key of fields) {
                 const raw = record[key];
                 if (raw === null || raw === undefined) continue;
@@ -3848,7 +3848,7 @@
                 );
                 territoryCol = pickHeader('source_territory_name', 'processing_territory_name');
                 dedIsAlwaysZero = true;
-                revenueCol = pickHeader('Revenue Class Description');
+                revenueCol = pickHeader('tango_income_type_name', 'Revenue Class Description');
             } else if (providerGuess === 'ASCAP (Dom)') {
                 amountCol = pickHeader('Dollars', 'Dollar Amount', 'Net Amount', 'Net Amount USD', 'Net Royalty', 'Net USD', 'Amount Paid', 'Gross Amount') || headers.find(h => /amount|total|usd|net/i.test(h)) || headers[0];
                 dedCol = headers.find(h => /dto|administr|admin|deduc|descuento/i.test(h)) || null;
@@ -3863,7 +3863,7 @@
                 dedCol = headers.find(h => /dto|administr|admin|deduc|descuento/i.test(h)) || null;
                 titleCol = headers.find(h => /title|obra|work|tit/i.test(h)) || null;
                 periodCol = headers.find(h => /period|peri|date|fecha/i.test(h)) || null;
-                revenueCol = pickHeader('Revenue Class Description', 'DESCRIP. CONCEP', 'Music User Genre');
+                revenueCol = pickHeader('Revenue Class Description', 'DESCRIP. CONCEP', 'Music User Genre', 'tango_income_type_name');
             }
             if (!amountCol) amountCol = headers[0];
             const providerCounts = new Map();
