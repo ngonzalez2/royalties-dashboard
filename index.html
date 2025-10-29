@@ -204,9 +204,17 @@
         }
 
         .dropbox-loader {
-            margin-top: 18px;
             display: flex;
             gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .landing-upload-actions {
+            margin-top: 18px;
+            display: flex;
+            gap: 12px;
             align-items: center;
             flex-wrap: wrap;
         }
@@ -867,10 +875,6 @@
             </div>
 
             <div class="controls">
-                <label class="file-btn" id="csvLabel">
-                    <input id="csvInput" type="file" accept=".csv,text/csv" multiple style="display:none" />
-                    Upload CSVs
-                </label>
                 <div class="view-tabs">
                     <button id="landingBtn" class="nav-btn">Landing</button>
                     <button id="tsBtn" class="nav-btn">Time series</button>
@@ -894,9 +898,15 @@
                     <h4>Load your royalty statements</h4>
                     <div class="small">Upload SGAE, ASCAP, or Warner Chappell CSV files or pull them directly from public CSV links to unlock highlights, trends, and diagnostics.</div>
                     <div class="insight-note small">Once data is loaded you will see provider mix, latest quarter performance, and data health here.</div>
-                    <div class="dropbox-loader">
-                        <input id="dropboxUrlInput" class="dropbox-input" type="url" placeholder="Paste one or more public CSV links (Dropbox, Google Drive, Google Sheets CSV export, GitHub raw, GitLab raw, OneDrive, Box, S3…)" />
-                        <button id="dropboxFetchBtn" class="nav-btn ghost">Load from URL(s)</button>
+                    <div class="landing-upload-actions">
+                        <label class="file-btn" id="csvLabel">
+                            <input id="csvInput" type="file" accept=".csv,text/csv" multiple style="display:none" />
+                            Upload CSVs
+                        </label>
+                        <div class="dropbox-loader">
+                            <input id="dropboxUrlInput" class="dropbox-input" type="url" placeholder="Paste one or more public CSV links (Dropbox, Google Drive, Google Sheets CSV export, GitHub raw, GitLab raw, OneDrive, Box, S3…)" />
+                            <button id="dropboxFetchBtn" class="nav-btn ghost">Load from URL(s)</button>
+                        </div>
                     </div>
                     <span id="dropboxStatus" class="dropbox-status"></span>
                 </div>
