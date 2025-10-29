@@ -3131,15 +3131,21 @@
                 topWorksEl.innerHTML = '<div class="small">No data</div>';
                 return;
             }
-            const x = top.map(t => t.amount).reverse(),
-                y = top.map(t => t.work_title).reverse();
+            const orderedTop = top.slice().reverse();
+            const x = orderedTop.map(t => t.amount);
+            const y = orderedTop.map(t => t.work_title);
+            const colors = orderedTop.map(t => colorForWorkKey(t.work_title));
             const trace = {
                 x,
                 y,
                 type: 'bar',
                 orientation: 'h',
                 marker: {
-                    color: '#4A90E2'
+                    color: colors,
+                    line: {
+                        color: 'rgba(7, 14, 28, 0.65)',
+                        width: 1
+                    }
                 }
             };
             const layout = {
