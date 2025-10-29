@@ -710,6 +710,224 @@
             margin-top: 12px;
         }
 
+        .work-income-controls {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+        }
+
+        .work-control-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .work-shortcuts {
+            display: inline-flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .muted.ghost {
+            background: rgba(8, 16, 32, 0.35);
+            border-color: rgba(146, 192, 255, 0.18);
+        }
+
+        .muted.ghost:hover,
+        .muted.ghost:focus {
+            background: rgba(124, 241, 180, 0.14);
+            border-color: rgba(124, 241, 180, 0.35);
+            color: var(--text);
+        }
+
+        .work-multi-select {
+            position: relative;
+            min-width: 260px;
+            flex: 1 1 260px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 6px 8px;
+            background: rgba(8, 16, 32, 0.6);
+            border: 1px solid rgba(140, 170, 255, 0.3);
+            border-radius: 10px;
+            cursor: text;
+        }
+
+        .work-multi-select:focus-within {
+            border-color: rgba(124, 241, 180, 0.6);
+            box-shadow: 0 0 0 3px rgba(124, 241, 180, 0.18);
+        }
+
+        .work-chip-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .work-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(124, 241, 180, 0.2);
+            color: var(--text);
+            font-size: 0.85rem;
+            line-height: 1;
+        }
+
+        .work-chip .color-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-flex;
+            background: rgba(124, 241, 180, 0.85);
+            box-shadow: 0 0 0 2px rgba(5, 12, 28, 0.55);
+        }
+
+        .work-chip button {
+            border: none;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            padding: 0 2px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            line-height: 1;
+        }
+
+        .work-chip button:hover,
+        .work-chip button:focus {
+            color: #ffb3b3;
+        }
+
+        .work-chip.placeholder {
+            background: transparent;
+            color: var(--muted);
+            padding: 0;
+        }
+
+        .work-multi-input {
+            flex: 1 1 120px;
+            min-width: 120px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-size: 0.9rem;
+            padding: 4px 0;
+        }
+
+        .work-multi-input::placeholder {
+            color: rgba(209, 220, 243, 0.45);
+        }
+
+        .work-multi-input:focus {
+            outline: none;
+        }
+
+        .work-options {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 6px);
+            max-height: 260px;
+            overflow-y: auto;
+            background: rgba(10, 20, 38, 0.96);
+            border: 1px solid rgba(124, 241, 180, 0.28);
+            border-radius: 12px;
+            box-shadow: 0 22px 40px rgba(5, 10, 25, 0.55);
+            padding: 6px;
+            display: none;
+            z-index: 40;
+        }
+
+        .work-options.is-open {
+            display: block;
+        }
+
+        .work-option {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            text-align: left;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .work-option:hover,
+        .work-option:focus {
+            background: rgba(124, 241, 180, 0.18);
+            outline: none;
+        }
+
+        .work-option.is-selected {
+            background: rgba(124, 241, 180, 0.28);
+            color: var(--text);
+        }
+
+        .work-options-empty {
+            padding: 8px 10px;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .work-mode-toggle {
+            display: inline-flex;
+            gap: 6px;
+            padding: 4px;
+            border-radius: 12px;
+            background: rgba(8, 16, 32, 0.6);
+            border: 1px solid rgba(140, 170, 255, 0.3);
+        }
+
+        .work-mode-btn {
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.18s ease-in-out;
+            font-family: inherit;
+        }
+
+        .work-mode-btn:hover,
+        .work-mode-btn:focus {
+            color: var(--text);
+            outline: none;
+        }
+
+        .work-mode-btn.is-active {
+            background: rgba(124, 241, 180, 0.24);
+            color: var(--text);
+            box-shadow: 0 12px 26px rgba(16, 48, 36, 0.35);
+        }
+
+        .work-cap-note {
+            margin: -4px 0 4px;
+            color: rgba(209, 220, 243, 0.75);
+            display: none;
+        }
+
+        .work-income-empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .work-income-empty button {
+            margin-top: 12px;
+        }
+
         input.small-input,
         select.small-input,
         .muted,
@@ -1335,6 +1553,11 @@
                     renderRevenueStack();
                 }
             }
+        }
+
+        function isViewActive(viewId) {
+            const view = viewElements[viewId];
+            return !!(view && view.classList.contains('active'));
         }
 
         function isViewActive(viewId) {
