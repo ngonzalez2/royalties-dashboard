@@ -258,6 +258,10 @@
             color: var(--accent);
         }
 
+        .dropbox-status.warning {
+            color: #ffd27f;
+        }
+
         .muted {
             padding: 9px 14px;
             border-radius: 10px;
@@ -1068,7 +1072,7 @@
         document.getElementById('csvLabel').addEventListener('click', () => csvInput.click());
         const dropboxUrlInput = document.getElementById('dropboxUrlInput');
         const dropboxFetchBtn = document.getElementById('dropboxFetchBtn');
-        const dropboxStatusEl = document.getElementById('dropboxStatus');
+        const uploadStatusEl = document.getElementById('dropboxStatus');
 
         if (dropboxFetchBtn) {
             dropboxFetchBtn.addEventListener('click', () => {
@@ -1525,12 +1529,49 @@
 
         async function ingestCsvFiles(files) {
             const queue = Array.from(files || []);
-            if (!queue.length) return;
+            if (!queue.length) {
+                return {
+                    loadedRows: 0,
+                    loadedFiles: 0,
+                    duplicates: []
+                };
+            }
+
+            const seenKeys = new Set();
+            const duplicateCounts = new Map();
+            const uniqueQueue = [];
+            const makeDuplicateSummary = () => Array.from(duplicateCounts.entries()).map(([name, count]) => count > 1 ? `${name} ×${count}` : name);
+
+            for (const f of queue) {
+                if (!f) continue;
+                const name = typeof f.name === 'string' ? f.name : '';
+                const size = typeof f.size === 'number' ? f.size : 'unknown';
+                const key = `${name.trim().toLowerCase()}__${size}`;
+                if (seenKeys.has(key)) {
+                    const label = name || `Unnamed file ${duplicateCounts.size + 1}`;
+                    duplicateCounts.set(label, (duplicateCounts.get(label) || 0) + 1);
+                    continue;
+                }
+                seenKeys.add(key);
+                uniqueQueue.push(f);
+            }
+
+            if (!uniqueQueue.length) {
+                if (duplicateCounts.size) {
+                    console.warn('Skipped duplicate file(s):', Array.from(duplicateCounts.entries()));
+                }
+                return {
+                    loadedRows: 0,
+                    loadedFiles: 0,
+                    duplicates: makeDuplicateSummary()
+                };
+            }
+
             rawDataRows = [];
             fileDiagnostics = [];
             showDiagnostics();
             markAllCachesDirty();
-            for (const f of queue) {
+            for (const f of uniqueQueue) {
                 try {
                     const rows = await parseCsvFile(f);
                     if (!rows || rows.length === 0) continue;
@@ -1697,30 +1738,73 @@
                     alert('Error parsing ' + f.name + ': ' + (err.message || err));
                 }
             }
+            if (duplicateCounts.size) {
+                console.warn('Skipped duplicate file(s):', Array.from(duplicateCounts.entries()));
+            }
             normalized = normalizeDataFromCsv(rawDataRows);
             markAllCachesDirty();
             await convertCurrenciesToUSD();
             renderLandingKpis();
             refreshWorkIncomeControls();
             showView('landingView');
-            return rawDataRows.length > 0;
+            return {
+                loadedRows: rawDataRows.length,
+                loadedFiles: fileDiagnostics.length,
+                duplicates: makeDuplicateSummary()
+            };
         }
 
         async function handleCsvFiles(e) {
             const files = Array.from(e.target.files || []);
             if (!files.length) return;
-            await ingestCsvFiles(files);
+            const result = await ingestCsvFiles(files);
+            reportIngestOutcome(result);
             e.target.value = '';
         }
 
-        function updateDropboxStatus(message, tone = 'muted') {
-            if (!dropboxStatusEl) return;
-            dropboxStatusEl.textContent = message || '';
-            dropboxStatusEl.classList.remove('error', 'success');
+        function updateUploadStatus(message, tone = 'muted') {
+            if (!uploadStatusEl) return;
+            uploadStatusEl.textContent = message || '';
+            uploadStatusEl.classList.remove('error', 'success', 'warning');
             if (tone === 'error') {
-                dropboxStatusEl.classList.add('error');
+                uploadStatusEl.classList.add('error');
             } else if (tone === 'success') {
-                dropboxStatusEl.classList.add('success');
+                uploadStatusEl.classList.add('success');
+            } else if (tone === 'warning') {
+                uploadStatusEl.classList.add('warning');
+            }
+        }
+
+        function reportIngestOutcome(result, { showOnSuccess = false } = {}) {
+            if (!result) return;
+            const duplicates = Array.isArray(result.duplicates) ? result.duplicates.filter(Boolean) : [];
+            const loadedFiles = Number.isFinite(result.loadedFiles) ? result.loadedFiles : 0;
+            const loadedRows = Number.isFinite(result.loadedRows) ? result.loadedRows : 0;
+            let message = '';
+            let tone = 'muted';
+
+            if (loadedFiles > 0 && (showOnSuccess || duplicates.length)) {
+                message = `Loaded ${loadedFiles} file${loadedFiles === 1 ? '' : 's'}.`;
+                tone = 'success';
+            }
+
+            if (duplicates.length) {
+                const duplicateLabel = duplicates.length === 1 ? 'duplicate file' : 'duplicate files';
+                const list = duplicates.join(', ');
+                if (message) message += ' ';
+                message += `Skipped ${duplicateLabel}: ${list}.`;
+                tone = 'warning';
+            }
+
+            if (!loadedRows && loadedFiles === 0 && duplicates.length === 0) {
+                message = 'No rows were parsed from the CSV file(s).';
+                tone = 'error';
+            }
+
+            if (message) {
+                updateUploadStatus(message, tone);
+            } else if (!showOnSuccess) {
+                updateUploadStatus('');
             }
         }
 
@@ -1934,7 +2018,7 @@
             if (!dropboxFetchBtn) return;
             const raw = dropboxUrlInput ? dropboxUrlInput.value.trim() : '';
             if (!raw) {
-                updateDropboxStatus('Paste one or more public CSV links first.', 'error');
+                updateUploadStatus('Paste one or more public CSV links first.', 'error');
                 if (dropboxUrlInput) dropboxUrlInput.focus();
                 return;
             }
@@ -1948,12 +2032,12 @@
                 }
             });
             if (!urls.length) {
-                updateDropboxStatus('Paste one or more public CSV links first.', 'error');
+                updateUploadStatus('Paste one or more public CSV links first.', 'error');
                 if (dropboxUrlInput) dropboxUrlInput.focus();
                 return;
             }
             dropboxFetchBtn.disabled = true;
-            updateDropboxStatus(`Fetching file${urls.length > 1 ? 's' : ''}…`);
+            updateUploadStatus(`Fetching file${urls.length > 1 ? 's' : ''}…`);
             try {
                 const files = [];
                 for (const originalUrl of urls) {
@@ -2011,23 +2095,19 @@
                     files.push(file);
                 }
                 if (!files.length) {
-                    updateDropboxStatus('No downloadable CSV files were found for those links.', 'error');
+                    updateUploadStatus('No downloadable CSV files were found for those links.', 'error');
                     return;
                 }
                 if (dropboxUrlInput) dropboxUrlInput.value = '';
-                const loaded = await ingestCsvFiles(files);
-                if (loaded) {
-                    updateDropboxStatus(`Loaded ${files.length} file${files.length > 1 ? 's' : ''}.`, 'success');
-                } else {
-                    updateDropboxStatus('No rows were parsed from the downloaded CSV file(s).', 'error');
-                }
+                const result = await ingestCsvFiles(files);
+                reportIngestOutcome(result, { showOnSuccess: true });
             } catch (err) {
                 console.error(err);
                 const message = err && err.message ? err.message : 'Failed to load file(s).';
                 if (message.includes('blocked by CORS')) {
-                    updateDropboxStatus('This link may not allow direct downloads or is blocked by CORS. Make sure the link is a public direct CSV download.', 'error');
+                    updateUploadStatus('This link may not allow direct downloads or is blocked by CORS. Make sure the link is a public direct CSV download.', 'error');
                 } else {
-                    updateDropboxStatus(`Failed to load file(s): ${message}`, 'error');
+                    updateUploadStatus(`Failed to load file(s): ${message}`, 'error');
                 }
             } finally {
                 dropboxFetchBtn.disabled = false;
