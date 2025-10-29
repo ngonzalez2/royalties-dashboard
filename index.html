@@ -1105,7 +1105,8 @@
             WORK_TITLE: 'TIT. OBRA MUSICAL',
             PERIOD: 'PERIODO ORIGEN',
             DEDUCTION: 'DTO. ADMINISTRACION',
-            GROSS: 'IMPORTE'
+            GROSS: 'IMPORTE',
+            CONCEPT: 'DESCRIP. CONCEP'
         };
 
         const FALLBACK_RATES = {
@@ -1566,13 +1567,16 @@
                         periodCol = null,
                         territoryCol = null,
                         periodYearCol = null,
-                        periodQuarterCol = null;
+                        periodQuarterCol = null,
+                        revenueCol = null;
                     let dedIsAlwaysZero = false;
                     if (provider === 'SGAE') {
                         if (headers.includes(SGAE_HEADERS.GROSS)) amountCol = SGAE_HEADERS.GROSS;
                         if (headers.includes(SGAE_HEADERS.DEDUCTION)) dedCol = SGAE_HEADERS.DEDUCTION;
                         if (headers.includes(SGAE_HEADERS.WORK_TITLE)) titleCol = SGAE_HEADERS.WORK_TITLE;
                         if (headers.includes(SGAE_HEADERS.PERIOD)) periodCol = SGAE_HEADERS.PERIOD;
+                        if (headers.includes(SGAE_HEADERS.CONCEPT)) revenueCol = SGAE_HEADERS.CONCEPT;
+                        else revenueCol = pickHeader('DESCRIP. CONCEP');
                     } else if (provider === 'WARNER CHAPPELL') {
                         amountCol = pickHeader('amount_paid_less_tax', 'amount_paid') || headers[0];
                         titleCol = pickHeader('tango_work_title', 'tango_work_code');
@@ -1580,6 +1584,7 @@
                         territoryCol = pickHeader('source_territory_name', 'processing_territory_name');
                         dedCol = null;
                         dedIsAlwaysZero = true;
+                        revenueCol = pickHeader('tango_income_type_name', 'Revenue Class Description');
                     } else if (provider === 'ASCAP (Dom)') {
                         amountCol = pickHeader(
                             'Dollars',
@@ -1609,11 +1614,13 @@
                         periodCol = headers.find(h => /period|peri|date|fecha/i.test(h));
                         if (!periodCol) periodCol = periodQuarterCol || periodYearCol;
                         dedCol = headers.find(h => /dto|administr|admin|deduc/i.test(h));
+                        revenueCol = pickHeader('Music User Genre') || pickHeader('Revenue Class Description');
                     } else {
                         amountCol = headers.find(h => /amount|dollar|importe|monto|total/i.test(h)) || headers[0];
                         titleCol = headers.find(h => /title|obra|work|tit/i.test(h));
                         periodCol = headers.find(h => /period|peri|date|fecha/i.test(h));
                         dedCol = headers.find(h => /dto|administr|admin|deduc/i.test(h));
+                        revenueCol = pickHeader('Revenue Class Description', 'DESCRIP. CONCEP', 'Music User Genre', 'tango_income_type_name');
                     }
                     rows.forEach(r => {
                         const gross = amountCol ? parseAmountSmart(r[amountCol]) : NaN;
@@ -1631,7 +1638,8 @@
                             provider: r.__detected_provider,
                             territoryCol: territoryCol || null,
                             periodYearCol: periodYearCol || null,
-                            periodQuarterCol: periodQuarterCol || null
+                            periodQuarterCol: periodQuarterCol || null,
+                            revenueCol: revenueCol || null
                         };
                         if (titleCol) r.__work_title_candidate = r[titleCol];
                         if (periodCol) {
@@ -1656,6 +1664,7 @@
                             }
                         }
                         if (territoryCol) r.__territory_candidate = r[territoryCol];
+                        if (revenueCol) r.__revenue_class_candidate = r[revenueCol];
                     });
                     rawDataRows.push(...rows);
                     const total = rows.reduce((s, rr) => s + (Number.isFinite(rr.__parsed_amount_original) ? rr.__parsed_amount_original : 0), 0);
@@ -1674,6 +1683,7 @@
                             territoryCol,
                             periodYearCol: periodYearCol || null,
                             periodQuarterCol: periodQuarterCol || null,
+                            revenueCol: revenueCol || null,
                             provider
                         },
                         rows: rows.length,
@@ -3201,7 +3211,14 @@
         }
 
         function pickRevenueClassValue(record) {
-            const fields = ['DESCRIP. CONCEP', 'Revenue Class Description', 'Music User Genre'];
+            if (record && Object.prototype.hasOwnProperty.call(record, '__revenue_class_candidate')) {
+                const raw = record.__revenue_class_candidate;
+                if (raw !== null && raw !== undefined) {
+                    const s = String(raw).trim();
+                    if (s !== '') return s;
+                }
+            }
+            const fields = ['DESCRIP. CONCEP', 'tango_income_type_name', 'Revenue Class Description', 'Music User Genre'];
             for (const key of fields) {
                 const raw = record[key];
                 if (raw === null || raw === undefined) continue;
@@ -3574,6 +3591,7 @@
                 const periodQuarterOptions = renderOptions(mapping.periodQuarterCol, { allowEmpty: true, emptyLabel: 'Auto / None' });
                 const titleOptions = renderOptions(mapping.titleCol, { allowEmpty: true, emptyLabel: 'Auto / None' });
                 const territoryOptions = renderOptions(mapping.territoryCol, { allowEmpty: true, emptyLabel: 'Auto / None' });
+                const revenueOptions = renderOptions(mapping.revenueCol, { allowEmpty: true, emptyLabel: 'Auto / None' });
                 const periodParts = [];
                 if (mapping.periodCol) periodParts.push(`date → ${mapping.periodCol}`);
                 if (mapping.periodYearCol) periodParts.push(`year → ${mapping.periodYearCol}`);
@@ -3586,6 +3604,7 @@
                     `Period: <strong>${escapeHtml(periodParts.length ? periodParts.join(' · ') : 'Auto')}</strong>`,
                     `Title: <strong>${escapeHtml(mapping.titleCol || 'Auto')}</strong>`,
                     `Territory: <strong>${escapeHtml(mapping.territoryCol || 'Auto')}</strong>`,
+                    `Revenue class: <strong>${escapeHtml(mapping.revenueCol || 'Auto')}</strong>`,
                     `Quarter source: <strong>${escapeHtml(quarterSourceLabel)}</strong>`
                 ].join(' • ');
                 const sourceTotal = Number.isFinite(d.fileTotalSource) ? d.fileTotalSource : (Number.isFinite(d.fileTotal) ? d.fileTotal : 0);
@@ -3624,6 +3643,9 @@
                             <label>Territory column
                                 <select id="mappingTerritory-${i}" class="diag-select">${territoryOptions}</select>
                             </label>
+                            <label>Revenue class column
+                                <select id="mappingRevenue-${i}" class="diag-select">${revenueOptions}</select>
+                            </label>
                         </div>
                         <div class="diagnostics-actions">
                             <button onclick="saveMapping(${i})" class="muted">Apply mapping</button>
@@ -3645,6 +3667,7 @@
             const periodQuarterSelect = document.getElementById(`mappingPeriodQuarter-${idx}`);
             const titleSelect = document.getElementById(`mappingTitle-${idx}`);
             const territorySelect = document.getElementById(`mappingTerritory-${idx}`);
+            const revenueSelect = document.getElementById(`mappingRevenue-${idx}`);
             if (!amountSelect) {
                 alert('Missing gross column selector.');
                 return;
@@ -3670,6 +3693,7 @@
             const periodQuarterCol = pickValue(periodQuarterSelect, diag.mapping ? diag.mapping.periodQuarterCol : null);
             const titleCol = pickValue(titleSelect, diag.mapping ? diag.mapping.titleCol : null);
             const territoryCol = pickValue(territorySelect, diag.mapping ? diag.mapping.territoryCol : null);
+            const revenueCol = pickValue(revenueSelect, diag.mapping ? diag.mapping.revenueCol : null);
             const providerOverride = providerSelect ? providerSelect.value || 'auto' : 'auto';
             diag.providerOverride = providerOverride;
             const rows = rawDataRows.filter(r => r.__source_file === diag.file);
@@ -3696,6 +3720,8 @@
                 else if (titleCol === null) delete r.__work_title_candidate;
                 if (territoryCol) r.__territory_candidate = r[territoryCol];
                 else if (territoryCol === null) delete r.__territory_candidate;
+                if (revenueCol) r.__revenue_class_candidate = r[revenueCol];
+                else if (revenueCol === null) delete r.__revenue_class_candidate;
                 if (periodCol) r.__period_raw = r[periodCol];
                 else delete r.__period_raw;
                 delete r.__period_date_override;
@@ -3726,6 +3752,7 @@
                     titleCol: titleCol || null,
                     periodCol: periodCol || null,
                     territoryCol: territoryCol || null,
+                    revenueCol: revenueCol || null,
                     periodYearCol: periodYearCol || null,
                     periodQuarterCol: periodQuarterCol || null,
                     provider: resolvedProvider
@@ -3742,6 +3769,7 @@
                 titleCol: titleCol || null,
                 periodCol: periodCol || null,
                 territoryCol: territoryCol || null,
+                revenueCol: revenueCol || null,
                 periodYearCol: periodYearCol || null,
                 periodQuarterCol: periodQuarterCol || null,
                 provider: finalProvider
@@ -3792,13 +3820,15 @@
                 periodCol = null,
                 territoryCol = null,
                 periodYearCol = null,
-                periodQuarterCol = null;
+                periodQuarterCol = null,
+                revenueCol = null;
             let dedIsAlwaysZero = false;
             if (providerGuess === 'SGAE') {
                 amountCol = pickHeader(SGAE_HEADERS.GROSS) || headers[0];
                 dedCol = pickHeader(SGAE_HEADERS.DEDUCTION);
                 titleCol = pickHeader(SGAE_HEADERS.WORK_TITLE);
                 periodCol = pickHeader(SGAE_HEADERS.PERIOD);
+                revenueCol = pickHeader(SGAE_HEADERS.CONCEPT, 'DESCRIP. CONCEP');
             } else if (providerGuess === 'WARNER CHAPPELL') {
                 amountCol = pickHeader(
                     'amount_paid_less_tax',
@@ -3818,6 +3848,7 @@
                 );
                 territoryCol = pickHeader('source_territory_name', 'processing_territory_name');
                 dedIsAlwaysZero = true;
+                revenueCol = pickHeader('tango_income_type_name', 'Revenue Class Description');
             } else if (providerGuess === 'ASCAP (Dom)') {
                 amountCol = pickHeader('Dollars', 'Dollar Amount', 'Net Amount', 'Net Amount USD', 'Net Royalty', 'Net USD', 'Amount Paid', 'Gross Amount') || headers.find(h => /amount|total|usd|net/i.test(h)) || headers[0];
                 dedCol = headers.find(h => /dto|administr|admin|deduc|descuento/i.test(h)) || null;
@@ -3826,11 +3857,13 @@
                 periodQuarterCol = pickHeader('Distribution Quarter', 'DistributionQuarter', 'Royalty Quarter', 'Quarter');
                 periodCol = headers.find(h => /period|peri|date|fecha/i.test(h));
                 if (!periodCol) periodCol = periodQuarterCol || periodYearCol;
+                revenueCol = pickHeader('Music User Genre') || pickHeader('Revenue Class Description');
             } else {
                 amountCol = headers.find(h => /amount|importe|monto|total|usd|net/i.test(h)) || headers[0];
                 dedCol = headers.find(h => /dto|administr|admin|deduc|descuento/i.test(h)) || null;
                 titleCol = headers.find(h => /title|obra|work|tit/i.test(h)) || null;
                 periodCol = headers.find(h => /period|peri|date|fecha/i.test(h)) || null;
+                revenueCol = pickHeader('Revenue Class Description', 'DESCRIP. CONCEP', 'Music User Genre', 'tango_income_type_name');
             }
             if (!amountCol) amountCol = headers[0];
             const providerCounts = new Map();
@@ -3846,6 +3879,8 @@
                 if (titleCol) r.__work_title_candidate = r[titleCol];
                 if (territoryCol) r.__territory_candidate = r[territoryCol];
                 else delete r.__territory_candidate;
+                if (revenueCol) r.__revenue_class_candidate = r[revenueCol];
+                else delete r.__revenue_class_candidate;
                 const resolvedProvider = resolveProviderLabel(providerGuess, r, amountCol, diag.fileTypeHeader);
                 providerCounts.set(resolvedProvider, (providerCounts.get(resolvedProvider) || 0) + 1);
                 r.__detected_provider = resolvedProvider;
@@ -3875,6 +3910,7 @@
                     territoryCol: territoryCol || null,
                     periodYearCol: periodYearCol || null,
                     periodQuarterCol: periodQuarterCol || null,
+                    revenueCol: revenueCol || null,
                     provider: resolvedProvider
                 };
             });
@@ -3891,6 +3927,7 @@
                 territoryCol: territoryCol || null,
                 periodYearCol: periodYearCol || null,
                 periodQuarterCol: periodQuarterCol || null,
+                revenueCol: revenueCol || null,
                 provider: finalProvider
             };
             diag.dedIsAlwaysZero = dedIsAlwaysZero;
