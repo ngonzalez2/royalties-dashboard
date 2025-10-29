@@ -1567,9 +1567,10 @@
                 };
             }
 
-            const newRawData = [];
-            const newDiagnostics = [];
-
+            rawDataRows = [];
+            fileDiagnostics = [];
+            showDiagnostics();
+            markAllCachesDirty();
             for (const f of uniqueQueue) {
                 try {
                     const rows = await parseCsvFile(f);
@@ -1706,9 +1707,9 @@
                         if (territoryCol) r.__territory_candidate = r[territoryCol];
                         if (revenueCol) r.__revenue_class_candidate = r[revenueCol];
                     });
-                    newRawData.push(...rows);
+                    rawDataRows.push(...rows);
                     const total = rows.reduce((s, rr) => s + (Number.isFinite(rr.__parsed_amount_original) ? rr.__parsed_amount_original : 0), 0);
-                    newDiagnostics.push({
+                    fileDiagnostics.push({
                         file: f.name,
                         provider,
                         providerOverride: 'auto',
@@ -1731,29 +1732,17 @@
                         fileTotalSource: total,
                         fileTotalConverted: 0
                     });
+                    showDiagnostics();
                 } catch (err) {
                     console.error(err);
                     alert('Error parsing ' + f.name + ': ' + (err.message || err));
                 }
             }
-
             if (duplicateCounts.size) {
                 console.warn('Skipped duplicate file(s):', Array.from(duplicateCounts.entries()));
             }
-
-            if (!newRawData.length) {
-                return {
-                    loadedRows: 0,
-                    loadedFiles: 0,
-                    duplicates: makeDuplicateSummary()
-                };
-            }
-
-            rawDataRows = newRawData;
-            fileDiagnostics = newDiagnostics;
-            showDiagnostics();
-            markAllCachesDirty();
             normalized = normalizeDataFromCsv(rawDataRows);
+            markAllCachesDirty();
             await convertCurrenciesToUSD();
             renderLandingKpis();
             refreshWorkIncomeControls();
