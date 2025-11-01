@@ -23,16 +23,21 @@ const querySchema = z.object({
     .transform((value) => value === 'true')
 });
 
-const positiveNumber = z
+const coercedNumber = z
   .coerce
   .number()
   .refine((value) => !Number.isNaN(value), 'Value must be a number');
+
+const nonNegativeNumber = coercedNumber.refine(
+  (value) => value >= 0,
+  'Value must be greater than or equal to 0'
+);
 
 const payloadSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional().nullable(),
   price: z
-    .preprocess((value) => (value === '' || value === null ? undefined : value), positiveNumber.min(0))
+    .preprocess((value) => (value === '' || value === null ? undefined : value), nonNegativeNumber)
     .optional(),
   condition: z.string().optional().nullable(),
   location: z.string().min(1),
@@ -40,7 +45,7 @@ const payloadSchema = z.object({
   brand: z.string().min(1),
   model: z.string().min(1),
   year: z
-    .preprocess((value) => (value === '' || value === null ? undefined : value), positiveNumber)
+    .preprocess((value) => (value === '' || value === null ? undefined : value), coercedNumber)
     .optional(),
   imageUrl: z.string().url().optional().nullable()
 });
