@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-labelledby="title desc">
+  <title id="title">Placeholder image</title>
+  <desc id="desc">Neutral grey placeholder graphic with diagonal accent</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#f2f2f5" />
+      <stop offset="100%" stop-color="#d5d7de" />
+    </linearGradient>
+  </defs>
+  <rect width="600" height="400" fill="url(#bg)" />
+  <path d="M0 320 L600 80" stroke="#b4b8c3" stroke-width="40" stroke-linecap="round" opacity="0.45" />
+  <g fill="#7c8191" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" text-anchor="middle">
+    <text x="300" y="190" font-size="42" font-weight="600">Image unavailable</text>
+    <text x="300" y="240" font-size="26">Upload pending</text>
+  </g>
+</svg>
