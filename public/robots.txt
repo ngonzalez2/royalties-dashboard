@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://kito.example.com/sitemap.xml
